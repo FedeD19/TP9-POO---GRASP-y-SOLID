@@ -15,7 +15,7 @@
     <artifactId>smartticket</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>SmartTicket</name>
-    <description>TP 9 - Etapa 1: GRASP y SOLID</description>
+    <description>TP 9 - Etapa 2: CRUD del dominio GRASP y SOLID</description>
 
     <properties>
         <java.version>21</java.version>

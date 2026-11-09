@@ -11,7 +11,7 @@ public class OpenApiConfig {
     public OpenAPI smartTicketOpenAPI() {
         return new OpenAPI().info(new Info()
                 .title("SmartTicket API")
-                .version("Etapa 1")
-                .description("Infraestructura y rutas preparadas. Las historias de usuario todavia no estan implementadas."));
+                .version("Etapa 2")
+                .description("CRUD de Lugares, Sectores, Eventos y Clientes. Las historias de usuario aun no estan implementadas."));
     }
 }
