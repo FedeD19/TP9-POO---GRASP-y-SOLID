@@ -1,59 +1,43 @@
-# SmartTicket — Trabajo Práctico 9 — Etapa 3.1
+# SmartTicket — TP9 GRASP y SOLID — Etapa 3.2
 
-**Precios por evento y sector + generación automática de entradas.**
+**HU 1: Selección y cotización**, sobre la Etapa 3.1 (precios específicos por evento/sector y generación automática de entradas).
 
-Esta versión parte del proyecto **Etapa 2 corregida** que ya contiene los CRUD de `Lugar`, `Sector`, `Evento` y `Cliente` con Spring Boot, Maven, JPA, H2 y Swagger. Las Historias de Usuario HU1 (cotizar), HU2 (pagar) y HU3 (escanear) **siguen sin implementarse (HTTP 501)**.
+Proyecto Java 21, Spring Boot 3.5.16, Maven, Spring Data JPA, H2, Bean Validation y Swagger/OpenAPI.
 
-## 1. Requisitos y ejecución
+## 1. Qué funciona
 
-- JDK 21 o superior y Maven 3.9.x.
-- Puerto `8080` libre.
-- Ubicarse con PowerShell en la carpeta que contiene `pom.xml`.
+- CRUD de **Lugar, Sector, Evento y Cliente** (Etapa 2).
+- Registro de **precios por evento y sector**, y generación de entradas `DISPONIBLE` al crear un evento (Etapa 3.1).
+- Consulta de inventario: `GET /api/v1/eventos/{id}/inventario`.
+- **Cotización:** `POST /api/v1/cotizaciones/cotizar` (Etapa 3.2).
+- **Pendiente:** iniciar pago, webhook de pagos y escaneo de acceso; conservan la respuesta 501.
+
+En esta versión, **cotizar NO reserva, vende ni emite entradas**, y tampoco cambia su estado. El resultado es orientativo hasta intentar comprar; HU 2 verificará nuevamente el inventario.
+
+## 2. Ejecutar en Windows con VSCode
+
+Abrir la carpeta del proyecto donde está `pom.xml` y ejecutar en PowerShell:
 
 ```powershell
 mvn clean test
 mvn spring-boot:run
 ```
 
-- Swagger: http://localhost:8080/swagger-ui.html
+Si Maven finaliza las pruebas correctamente, mostrará `BUILD SUCCESS`.
+
+- Swagger UI: http://localhost:8080/swagger-ui.html
 - Estado: http://localhost:8080/api/v1/estado
-- H2: http://localhost:8080/h2-console
-- Base H2: `jdbc:h2:mem:smartticket;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`, usuario `sa`, contraseña en blanco.
+- Consola H2: http://localhost:8080/h2-console
+- JDBC URL: `jdbc:h2:mem:smartticket;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`
+- Usuario H2: `sa`; contraseña: vacía.
 
-**La base es volátil:** al apagar el servidor se pierden los registros. Es normal y útil para repetir las pruebas.
+La base H2 está **en memoria**: sus registros desaparecen al detener Spring Boot.
 
-## 2. Qué se agregó
+## 3. Preparación de los datos en Swagger
 
-| Componente | Archivo | Función |
-|---|---|---|
-| Entidad | `model/PrecioSector.java` | Une un `Evento` con un `Sector` y almacena su `precio` específico. La BD prohíbe duplicar `(evento_id,sector_id)`. |
-| DTO de creación | `dto/EventoCreacionRequest.java` | Recibe el evento y una lista obligatoria de precios por sector. |
-| DTO de precios | `dto/PrecioSectorRequest.java` | Valida `sectorId` y `precio` mayor a cero, con dos decimales como máximo. |
-| DTO de lectura | `dto/InventarioEventoResponse.java`, `InventarioSectorResponse.java` | Permiten consultar precios, capacidades y cantidad de entradas por estado. |
-| Repositorios | `PrecioSectorRepository.java`, `EntradaRepository.java` | Persistencia y consultas; los controladores no ejecutan SQL. |
-| Servicio | `EventoService.java` | Valida precios, registra el evento y genera entradas en una transacción. |
-| Servicio | `SectorService.java` | Impide modificar la capacidad o ubicación de sectores que ya tienen entradas de eventos. |
-| Controlador | `EventoController.java` | Recibe el nuevo DTO en POST y expone GET de inventario. |
-| Excepción | `SolicitudInvalidaException.java` | Convierte reglas inválidas de alta en HTTP 400 mediante `ApiExceptionHandler`. |
-| Pruebas | `PreciosYEntradasTests.java` | Pruebas de precios, generación, invalidaciones, relaciones y bajas seguras. |
+### A. Crear Lugar
 
-## 3. Decisiones de dominio
-
-1. **El precio no se guarda en `Sector`.** El mismo sector puede valer $12.000 para Rock Fest y $18.000 para otro evento. Se usa una tabla independiente `PRECIOS_SECTOR`.
-2. **Al crear un evento se deben enviar los precios de *todos* los sectores existentes de su lugar, exactamente una vez.** No se permite crear eventos en lugares que todavía no tengan sectores.
-3. **Se genera una entrada física por cada plaza del sector.** Capacidad Platea = 3 y VIP = 2 significa crear cinco objetos `Entrada`, cada uno en `DISPONIBLE`, vinculado a evento y sector.
-4. **Cada entrada recibe un token QR aleatorio (`UUID`) desde su creación**, pero ese código NO habilita el ingreso mientras la entrada no esté `EMITIDA`. En HU2 se pasará a `EMITIDA` después de un pago aprobado; HU3 deberá comprobar ese estado antes de permitir el ingreso.
-5. **Una transacción engloba el alta completa** (`@Transactional`): el evento, los precios y las entradas se guardan todos o ninguno. Esto evita eventos parcialmente configurados.
-6. **No se puede cambiar la capacidad ni el lugar de un sector usado por eventos**, ya que las entradas ya fueron generadas. Sí puede cambiarse el nombre del sector.
-7. **PUT de Evento mantiene el DTO anterior** y permite editar nombre/fecha, pero NO mover el evento de lugar después de generar las entradas. Los precios fijados al crear el evento no se modifican con ese PUT.
-8. **Eliminar un evento** está permitido solo si todas sus entradas siguen `DISPONIBLE` y ninguna está asociada a una venta. Se eliminan primero sus entradas y precios, luego el evento, dentro de una transacción. Si hay entradas `RESERVADA`, `EMITIDA`, `UTILIZADA` o vinculadas a ventas, se responde 409.
-9. En esta etapa no se implementaron reservas, concurrencia de pagos, autenticación ni QR gráfico. El token almacenado en `codigoQR` es el dato que más adelante podrá codificarse en una imagen QR.
-
-## 4. Pruebas en Swagger: orden correcto
-
-### Paso A — Crear el lugar
-
-`POST /api/v1/lugares` (esperado **201 Created**):
+`POST /api/v1/lugares` (esperado **201**):
 
 ```json
 {
@@ -62,11 +46,11 @@ mvn spring-boot:run
 }
 ```
 
-Guardá el `id` de la respuesta (en ejemplos siguientes se supone que es `1`).
+Anotar el `id` real de la respuesta. En los ejemplos siguientes se supone que vale `1`.
 
-### Paso B — Crear dos sectores
+### B. Crear dos sectores
 
-`POST /api/v1/sectores` (esperado **201**) para Platea:
+`POST /api/v1/sectores` dos veces (esperado **201**):
 
 ```json
 {
@@ -76,21 +60,19 @@ Guardá el `id` de la respuesta (en ejemplos siguientes se supone que es `1`).
 }
 ```
 
-Repetí para VIP:
-
 ```json
 {
   "nombre": "VIP",
-  "capacidadMaxima": 2,
+  "capacidadMaxima": 1,
   "lugarId": 1
 }
 ```
 
-Anotá **ambos ID reales**; en el ejemplo supondremos `1` (Platea) y `2` (VIP). Usamos capacidades pequeñas para que sea fácil comprobar el inventario.
+Anotar sus IDs. En los ejemplos siguientes se supone `1` para Platea y `2` para VIP. Usamos capacidades pequeñas para facilitar las pruebas.
 
-### Paso C — Crear el evento indicando todos los precios
+### C. Crear Evento con precios
 
-`POST /api/v1/eventos` (esperado **201 Created**):
+`POST /api/v1/eventos` (esperado **201**):
 
 ```json
 {
@@ -104,118 +86,127 @@ Anotá **ambos ID reales**; en el ejemplo supondremos `1` (Platea) y `2` (VIP). 
 }
 ```
 
-IMPORTANTE: este JSON **cambia respecto de la Etapa 2**. Ahora es obligatorio agregar `preciosSectores`; el POST antiguo sin precios responde HTTP 400.
+Se debe indicar precio para **todos los sectores del lugar, sin duplicados**, como exige la Etapa 3.1. Anotar el ID real del evento; el ejemplo supone `1`.
 
-### Paso D — Comprobar los precios y la cantidad de entradas
+### D. Verificar inventario
 
-`GET /api/v1/eventos/{id}/inventario` (esperado **200 OK**), utilizando el ID real retornado al crear Rock Fest.
+`GET /api/v1/eventos/1/inventario`: se esperan 3 entradas Platea, 1 VIP, todas `DISPONIBLE`.
 
-Respuesta representativa:
+## 4. HU 1: ejecutar las tres pruebas de aceptación
+
+Abrir en Swagger: **Cotizaciones** → `POST /api/v1/cotizaciones/cotizar` → **Try it out**.
+
+### Escenario 1. Cotización exitosa (HTTP 200)
+
+```json
+{
+  "eventoId": 1,
+  "sectorId": 1,
+  "cantidad": 2
+}
+```
+
+Respuesta ejemplo:
 
 ```json
 {
   "eventoId": 1,
   "evento": "Rock Fest",
-  "sectores": [
-    {
-      "sectorId": 1,
-      "nombre": "Platea",
-      "capacidadMaxima": 3,
-      "precio": 12000.00,
-      "totalEntradas": 3,
-      "disponibles": 3,
-      "reservadas": 0,
-      "emitidas": 0,
-      "utilizadas": 0
-    },
-    {
-      "sectorId": 2,
-      "nombre": "VIP",
-      "capacidadMaxima": 2,
-      "precio": 25000.00,
-      "totalEntradas": 2,
-      "disponibles": 2,
-      "reservadas": 0,
-      "emitidas": 0,
-      "utilizadas": 0
-    }
-  ]
+  "sectorId": 1,
+  "sector": "Platea",
+  "cantidad": 2,
+  "precioUnitario": 12000.00,
+  "subtotal": 24000.00,
+  "total": 24000.00,
+  "entradasDisponibles": 3
 }
 ```
 
-Así se comprueba la generación de **cinco entradas** sin exponer los tokens QR a través de un endpoint público.
+**Cálculo:** `12000.00 × 2 = 24000.00`. Como no hay descuentos, comisiones ni impuestos en la HU 1, `subtotal == total`.
 
-### Paso E — Probar errores intencionales
+### Escenario 2. Disponibilidad insuficiente (HTTP 400)
 
-| Acción | Resultado esperado |
+```json
+{
+  "eventoId": 1,
+  "sectorId": 2,
+  "cantidad": 3
+}
+```
+
+Hay 1 entrada VIP, pero se solicitan 3:
+
+```json
+{
+  "error": "VALIDACION",
+  "detalle": "Capacidad insuficiente o entradas no disponibles"
+}
+```
+
+### Escenario 3. Cantidad inválida (HTTP 400)
+
+```json
+{
+  "eventoId": 1,
+  "sectorId": 1,
+  "cantidad": 0
+}
+```
+
+Repetir con `-1`. Respuesta:
+
+```json
+{
+  "error": "VALIDACION",
+  "detalle": "La cantidad de entradas solicitadas debe ser mayor a cero"
+}
+```
+
+### Verificaciones adicionales
+
+- Evento inexistente o sector no perteneciente al evento → **404 Not Found**.
+- Falta de alguno de los campos requeridos → **400 Bad Request**.
+- Dos cotizaciones consecutivas no alteran las entradas: consultar nuevamente `GET /api/v1/eventos/1/inventario` → los `disponibles` siguen iguales.
+- Una entrada `RESERVADA`, `EMITIDA` o `UTILIZADA` no se cuenta como disponible; esto se verifica en las pruebas automatizadas `CotizacionTests` (todavía no hay endpoints de pago que cambien estados).
+
+Los IDs `1` y `2` son **ilustrativos**. Usar los IDs reales devueltos en cada paso. Si probaste la base antes sin reiniciar, tal vez los IDs sean distintos.
+
+## 5. Archivos nuevos y modificados
+
+| Archivo | Cambio |
 |---|---|
-| Intentar crear un evento sin `preciosSectores` | **400** VALIDACION |
-| Omitir el precio de VIP | **400** VALIDACION |
-| Repetir dos veces Platea | **400** VALIDACION |
-| Incluir un sector de otro lugar | **400** VALIDACION |
-| Precio `0` o negativo | **400** VALIDACION |
-| Crear evento en un lugar sin sectores | **400** VALIDACION |
-| Cambiar capacidad o lugar de un sector usado en un evento | **409** CONFLICTO |
-| Eliminar un sector usado en un evento | **409** CONFLICTO |
-| Cambiar el lugar de un evento con entradas | **409** CONFLICTO |
-| Consultar inventario de un evento inexistente | **404** NO_ENCONTRADO |
+| `dto/CotizacionRequest.java` | Recibe `eventoId`, `sectorId`, `cantidad`. Valida IDs positivos y campos obligatorios. |
+| `dto/CotizacionResponse.java` | Expone identificación, cantidad, precio unitario, subtotal, total y disponibilidad actual. |
+| `service/CotizacionService.java` | Comprueba cantidad positiva **antes de consultar repositorios**, valida el evento/sector, cuenta entradas `DISPONIBLE` y calcula con `BigDecimal`. |
+| `controller/CotizacionController.java` | Reemplaza la respuesta 501 de HU 1 por un endpoint POST con `@Valid @RequestBody`, que delega en el servicio. |
+| `test/CotizacionTests.java` | Seis pruebas automatizadas que cubren HU 1, estados de entradas, errores y precios por evento. |
+| `model/Evento.java` | Actualización de un comentario desactualizado. |
+| `pom.xml` | Actualización de la descripción del proyecto; no se cambian dependencias. |
 
-### Paso F — Probar eliminación segura (opcional)
+Los endpoints `PagoController`, `WebhookPagoController` y `AccesoController` permanecen sin lógica de negocio.
 
-`DELETE /api/v1/eventos/{id}` debe devolver **204 No Content** si todavía no hay ventas ni estados distintos de Disponible. Luego, `GET /api/v1/eventos/{id}/inventario` debe devolver 404, y los sectores quedan liberados para modificarse o borrarse.
+## 6. GRASP y SOLID aplicados
 
-## 5. Verificar la base de datos H2
+- **Controlador GRASP / SRP (SOLID):** `CotizacionController` conoce HTTP y delega el caso de uso; no consulta H2 ni multiplica importes.
+- **Experto en Información (GRASP):** el precio se obtiene de la entidad `PrecioSector`; los estados de las entradas están en `Entrada`. `CotizacionService` **coordina** esos datos y realiza el cálculo del caso de uso.
+- **Bajo acoplamiento / Indirección (GRASP):** el servicio depende de las interfaces `EventoRepository`, `PrecioSectorRepository` y `EntradaRepository`, inyectadas mediante el constructor.
+- **Alta cohesión (GRASP):** la lógica de cotizar reside en un servicio enfocado, separado de creación de eventos, persistencia, pagos y accesos.
+- **Precisión monetaria:** `BigDecimal.multiply(BigDecimal.valueOf(cantidad))` evita usar `double` para dinero.
+- **Solo lectura:** `@Transactional(readOnly = true)` expresa que cotizar no modifica la información. Una consulta es una foto del inventario, NO una garantía de disponibilidad futura.
 
-En `http://localhost:8080/h2-console`, ejecutá:
+## 7. Siguiente etapa (HU 2)
 
-```sql
-SELECT * FROM LUGARES;
-SELECT * FROM SECTORES;
-SELECT * FROM EVENTOS;
-SELECT * FROM PRECIOS_SECTOR;
-SELECT EVENTO_ID, SECTOR_ID, ESTADO, COUNT(*) AS CANTIDAD
-FROM ENTRADAS
-GROUP BY EVENTO_ID, SECTOR_ID, ESTADO;
-```
+Será necesario seleccionar entradas concretas y resolver la concurrencia correctamente al iniciar un pago (por ejemplo, usando bloqueo transaccional o actualizaciones condicionales). No es suficiente confiar en una cotización anterior: otro cliente podría comprar primero.
 
-Deberías ver dos filas en `PRECIOS_SECTOR` y un total de **5** entradas para el ejemplo; el campo `CODIGOQR` de cada entrada tendrá un identificador diferente. No se muestran esos códigos en el inventario público.
+## 8. Git (una vez que funcionen las pruebas)
 
-## 6. Cómo integrar con tu repositorio GitHub existente
-
-1. Hacé una copia de seguridad de tu carpeta actual (Etapa 2).
-2. Descomprimí este ZIP.
-3. Copiá el contenido de `src/`, `pom.xml` y `README.md` sobre **la carpeta local que ya tiene `.git`** (reemplazando los archivos correspondientes). No copies ninguna carpeta `target/` y **no borres `.git`**.
-4. En VSCode, con la terminal ubicada en la raíz del repositorio:
-
-```powershell
-mvn clean test
-mvn spring-boot:run
-```
-
-5. Probá los endpoints de la sección 4; después detené el servidor con `Ctrl+C`.
-6. Versioná los cambios:
+Integrar estos archivos en la **misma carpeta Git** de la Etapa 3.1. Conservar la carpeta `.git` existente y no copiar ni subir `target/`:
 
 ```powershell
 git status
 git add .
-git commit -m "Etapa 3.1: precios por sector y generacion de entradas"
+git commit -m "Etapa 3.2: HU1 seleccion y cotizacion"
 git push origin main
 ```
 
-Cambiá `main` por el nombre de tu rama si es distinto. No hagas el commit si las pruebas fallan.
-
-## 7. Por qué este diseño respeta GRASP y SOLID
-
-- **SRP:** `EventoController` solo recibe/envía HTTP; `EventoService` coordina creación y validación; `PrecioSector` representa la relación de negocio; cada repositorio persiste entidades.
-- **Experto en Información (GRASP):** el evento conoce el lugar; cada sector conoce su capacidad; `PrecioSector` conoce el precio específico del evento y sector.
-- **Alta cohesión:** las reglas de creación e inventario se concentran en el servicio de eventos; no se distribuyen en los controladores.
-- **Bajo acoplamiento / Indirección:** el servicio usa interfaces de repositorios inyectadas por constructor, sin SQL directo ni dependencias de una base H2 específica.
-- **Transacciones:** garantizan coherencia de las entidades relacionadas y facilitan la posterior HU1.
-
-## 8. Alcance posterior
-
-- **Etapa 3.2 — HU1:** cotizar evento + sector + cantidad con stock disponible y subtotal según `PrecioSector`.
-- **Etapa 3.3 — HU2:** validar nuevamente el stock, simular pago, registrar Venta, emitir entradas y habilitar acceso por QR.
-- **Etapa 3.4 — HU3:** verificar código, estado y evento; marcar `UTILIZADA` y registrar fecha y hora.
-
-**Importante:** `mvn clean test` incluye los tests de las Etapas 1 y 2, modificados para usar el nuevo POST de creación de eventos, más los tests de `PreciosYEntradasTests`. Debe terminar en `BUILD SUCCESS` antes de considerar completada esta etapa.
+> Nota de verificación: el ZIP y su contenido pueden validarse en este entorno. Maven no está instalado y el entorno no puede acceder a los servidores de dependencias, por lo que el `BUILD SUCCESS` se debe confirmar ejecutando `mvn clean test` localmente.

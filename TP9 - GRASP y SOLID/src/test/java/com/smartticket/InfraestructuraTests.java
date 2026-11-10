@@ -25,8 +25,11 @@ class InfraestructuraTests {
     }
 
     @Test
-    void cotizacionAunNoImplementada() throws Exception {
+    void cotizacionSinCuerpoDevuelve400() throws Exception {
+        // En HU 1 (Etapa 3.2), la cotizacion ya esta implementada.
+        // Como el @RequestBody es obligatorio, un POST sin JSON debe devolver 400.
         mvc.perform(post("/api/v1/cotizaciones/cotizar"))
-                .andExpect(status().isNotImplemented());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
     }
 }

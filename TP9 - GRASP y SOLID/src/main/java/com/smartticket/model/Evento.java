@@ -28,7 +28,7 @@ public class Evento {
     @JoinColumn(name = "lugar_id", nullable = false)
     private Lugar lugar;
 
-    // Precios por (evento, sector): se modelaran en la siguiente etapa.
+    // Los precios por (evento, sector) se almacenan en PrecioSector.
     public Evento() {}
 
     public Long getId() { return id; }
