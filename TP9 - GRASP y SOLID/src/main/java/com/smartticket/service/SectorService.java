@@ -3,10 +3,13 @@ package com.smartticket.service;
 import com.smartticket.dto.SectorRequest;
 import com.smartticket.dto.SectorResponse;
 import com.smartticket.exception.RecursoNoEncontradoException;
+import com.smartticket.exception.ConflictoException;
 import com.smartticket.model.Lugar;
 import com.smartticket.model.Sector;
 import com.smartticket.repository.LugarRepository;
 import com.smartticket.repository.SectorRepository;
+import com.smartticket.repository.PrecioSectorRepository;
+import com.smartticket.repository.EntradaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,10 +18,15 @@ import java.util.List;
 public class SectorService {
     private final SectorRepository repository;
     private final LugarRepository lugares;
+    private final PrecioSectorRepository precios;
+    private final EntradaRepository entradas;
 
-    public SectorService(SectorRepository repository, LugarRepository lugares) {
+    public SectorService(SectorRepository repository, LugarRepository lugares,
+                         PrecioSectorRepository precios, EntradaRepository entradas) {
         this.repository = repository;
         this.lugares = lugares;
+        this.precios = precios;
+        this.entradas = entradas;
     }
 
     @Transactional
@@ -41,13 +49,23 @@ public class SectorService {
     @Transactional
     public SectorResponse actualizar(Long id, SectorRequest datos) {
         Sector sector = obtenerEntidad(id);
+        if ((!sector.getLugar().getId().equals(datos.lugarId())
+                || sector.getCapacidadMaxima() != datos.capacidadMaxima())
+                && (precios.existsBySector_Id(id) || entradas.existsBySector_Id(id))) {
+            throw new ConflictoException(
+                "No se puede cambiar la capacidad o el lugar de un sector usado por eventos");
+        }
         aplicarDatos(sector, datos);
         return convertir(repository.save(sector));
     }
 
     @Transactional
     public void eliminar(Long id) {
-        repository.delete(obtenerEntidad(id));
+        Sector sector = obtenerEntidad(id);
+        if (precios.existsBySector_Id(id) || entradas.existsBySector_Id(id)) {
+            throw new ConflictoException("No se puede eliminar un sector asociado a eventos");
+        }
+        repository.delete(sector);
         repository.flush();
     }
 

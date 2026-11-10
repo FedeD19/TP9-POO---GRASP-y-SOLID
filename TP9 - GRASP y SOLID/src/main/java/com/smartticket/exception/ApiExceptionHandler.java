@@ -18,6 +18,11 @@ public class ApiExceptionHandler {
                 .body(new ErrorResponse("NO_ENCONTRADO", ex.getMessage()));
     }
 
+    @ExceptionHandler(SolicitudInvalidaException.class)
+    public ResponseEntity<ErrorResponse> solicitudInvalida(SolicitudInvalidaException ex) {
+        return ResponseEntity.badRequest().body(new ErrorResponse("VALIDACION", ex.getMessage()));
+    }
+
     @ExceptionHandler(ConflictoException.class)
     public ResponseEntity<ErrorResponse> conflicto(ConflictoException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

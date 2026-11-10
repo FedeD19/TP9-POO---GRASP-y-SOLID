@@ -88,8 +88,11 @@ class DominioCrudTests {
     @Test
     void eventoSeAsociaConLugarYRequiereFecha() throws Exception {
         long lugarId = crearLugar();
+        long sectorId = id(crear("/api/v1/sectores",
+                json(Map.of("nombre", "Platea", "capacidadMaxima", 3, "lugarId", lugarId))));
         long eventoId = id(crear("/api/v1/eventos",
-                json(Map.of("nombre", "Rock Fest", "fechaHora", "2026-12-20T21:00:00", "lugarId", lugarId))));
+                json(Map.of("nombre", "Rock Fest", "fechaHora", "2026-12-20T21:00:00", "lugarId", lugarId,
+                        "preciosSectores", java.util.List.of(Map.of("sectorId", sectorId, "precio", 12000))))));
         mvc.perform(get("/api/v1/eventos/{id}", eventoId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Rock Fest"))
@@ -134,8 +137,11 @@ class DominioCrudTests {
     @Test
     void noSePuedeEliminarLugarConEventosAsociados() throws Exception {
         long lugarId = crearLugar();
+        long sectorId = id(crear("/api/v1/sectores",
+                json(Map.of("nombre", "VIP", "capacidadMaxima", 2, "lugarId", lugarId))));
         crear("/api/v1/eventos",
-                json(Map.of("nombre", "Rock Fest", "fechaHora", "2026-12-20T21:00:00", "lugarId", lugarId)));
+                json(Map.of("nombre", "Rock Fest", "fechaHora", "2026-12-20T21:00:00", "lugarId", lugarId,
+                        "preciosSectores", java.util.List.of(Map.of("sectorId", sectorId, "precio", 25000)))));
         mvc.perform(delete("/api/v1/lugares/{id}", lugarId))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICTO"));

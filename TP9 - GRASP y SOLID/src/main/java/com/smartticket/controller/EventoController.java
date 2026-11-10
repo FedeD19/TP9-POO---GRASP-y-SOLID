@@ -1,6 +1,8 @@
 package com.smartticket.controller;
 
 import com.smartticket.dto.EventoRequest;
+import com.smartticket.dto.EventoCreacionRequest;
+import com.smartticket.dto.InventarioEventoResponse;
 import com.smartticket.dto.EventoResponse;
 import com.smartticket.service.EventoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +22,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/eventos")
-@Tag(name = "Eventos", description = "Etapa 2 - Administracion de eventos")
+@Tag(name = "Eventos", description = "Etapa 3.1 - Eventos, precios y entradas")
 public class EventoController {
     private final EventoService service;
 
@@ -29,8 +31,8 @@ public class EventoController {
     }
 
     @PostMapping
-    @Operation(summary = "Crear evento")
-    public ResponseEntity<EventoResponse> crear(@Valid @RequestBody EventoRequest datos) {
+    @Operation(summary = "Crear evento con precios por sector y generar entradas")
+    public ResponseEntity<EventoResponse> crear(@Valid @RequestBody EventoCreacionRequest datos) {
         EventoResponse nuevo = service.crear(datos);
         return ResponseEntity.created(URI.create("/api/v1/eventos/" + nuevo.id())).body(nuevo);
     }
@@ -45,6 +47,12 @@ public class EventoController {
     @Operation(summary = "Buscar evento por ID")
     public EventoResponse buscar(@PathVariable Long id) {
         return service.buscar(id);
+    }
+
+    @GetMapping("/{id}/inventario")
+    @Operation(summary = "Consultar los precios y las entradas generadas por sector")
+    public InventarioEventoResponse inventario(@PathVariable Long id) {
+        return service.inventario(id);
     }
 
     @PutMapping("/{id}")

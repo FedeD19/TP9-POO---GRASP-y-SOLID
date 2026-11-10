@@ -1,2 +1,4 @@
-com\smartticket\InfraestructuraTests.class
+com\smartticket\DominioCrudTests.class
 com\smartticket\SmartTicketApplicationTests.class
+com\smartticket\PreciosYEntradasTests.class
+com\smartticket\InfraestructuraTests.class
