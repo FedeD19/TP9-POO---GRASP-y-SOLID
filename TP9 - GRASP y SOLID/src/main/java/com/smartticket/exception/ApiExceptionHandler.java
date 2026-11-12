@@ -23,6 +23,12 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(new ErrorResponse("VALIDACION", ex.getMessage()));
     }
 
+    @ExceptionHandler(PagoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> pagoDenegado(PagoDenegadoException ex) {
+        return ResponseEntity.status(HttpStatus.PAYMENT_REQUIRED)
+                .body(new ErrorResponse("PAGO_DENEGADO", ex.getMessage()));
+    }
+
     @ExceptionHandler(ConflictoException.class)
     public ResponseEntity<ErrorResponse> conflicto(ConflictoException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

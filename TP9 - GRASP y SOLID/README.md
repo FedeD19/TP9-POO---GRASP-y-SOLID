@@ -210,3 +210,135 @@ git push origin main
 ```
 
 > Nota de verificación: el ZIP y su contenido pueden validarse en este entorno. Maven no está instalado y el entorno no puede acceder a los servidores de dependencias, por lo que el `BUILD SUCCESS` se debe confirmar ejecutando `mvn clean test` localmente.
+
+---
+
+# Etapa 3.3 — HU 2: pago simulado y emision de entradas
+
+Esta etapa conserva los CRUD, la creacion de precios y entradas y la HU 1.
+Se incorpora una **pasarela de pagos de prueba**, sin tarjetas reales ni movimientos de dinero.
+
+## Flujo
+
+1. El cliente puede cotizar con `POST /api/v1/cotizaciones/cotizar` (no reserva nada).
+2. Para comprar, envia un POST a `/api/v1/pagos/iniciar-pago` con cliente, evento, sector, cantidad y un token ficticio.
+3. `PagoService` valida los datos y adquiere un bloqueo exclusivo (`PESSIMISTIC_WRITE`) sobre el registro de `PrecioSector` correspondiente a ese evento y sector.
+4. Solo despues de bloquear se seleccionan las entradas que continuan `DISPONIBLE`.
+5. Si la cantidad no alcanza, responde **409 Conflict** sin consultar la pasarela.
+6. Se recalcula el total con el precio de la base de datos y se consulta `PasarelaPago`.
+7. Si la pasarela rechaza el token de prueba, devuelve **402 Pago denegado**, sin crear ninguna venta ni modificar entradas.
+8. Si aprueba, guarda una `Venta` en `PAGADA`, vincula las entradas y las marca como `EMITIDA`. Retorna los QR que se crearon en la Etapa 3.1.
+
+El controlador **no tiene las reglas del negocio**. El servicio se encarga de la operacion, los repositorios acceden a H2 y `PasarelaPago` es una interfaz implementada por `PasarelaPagoSimulada` (DIP, SRP, Bajo Acoplamiento).
+
+### Preparacion para Swagger
+
+Ejecutar:
+
+```powershell
+mvn clean test
+mvn spring-boot:run
+```
+
+Abrir `http://localhost:8080/swagger-ui.html`.
+
+H2 esta en memoria: si se reinicio Spring Boot, crear nuevamente las entidades. Se recomienda crear un lugar, un sector Platea con `capacidadMaxima: 3`, un evento con `precio: 12000` para ese sector y un cliente. Los IDs del ejemplo **deben reemplazarse por los IDs reales**.
+
+**Lugar:** `POST /api/v1/lugares`
+
+```json
+{"nombre":"Estadio Central", "direccion":"Av. Principal 123"}
+```
+
+**Sector:** `POST /api/v1/sectores`
+
+```json
+{"nombre":"Platea", "capacidadMaxima":3, "lugarId":1}
+```
+
+**Evento:** `POST /api/v1/eventos`
+
+```json
+{
+  "nombre":"Rock Fest",
+  "fechaHora":"2026-12-20T21:00:00",
+  "lugarId":1,
+  "preciosSectores":[{"sectorId":1,"precio":12000.00}]
+}
+```
+
+**Cliente:** `POST /api/v1/clientes`
+
+```json
+{"nombre":"Ana Perez", "email":"ana@example.com"}
+```
+
+### Escenario 1. Pago aprobado
+
+`POST /api/v1/pagos/iniciar-pago`
+
+```json
+{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":2,"tarjetaPrueba":"APROBADA"}
+```
+
+**Esperado: HTTP 200**; `estado: PAGADA`, `total: 24000`, dos entradas `EMITIDA` con sus `codigoQR`. `GET /api/v1/eventos/1/inventario` pasa de 3 disponibles a 1 disponible y 2 emitidas.
+
+### Escenario 2. Pago rechazado
+
+Crear otro evento o reiniciar el servidor para contar con stock nuevamente; ejecutar:
+
+```json
+{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":1,"tarjetaPrueba":"RECHAZADA"}
+```
+
+**Esperado: HTTP 402**, `error: PAGO_DENEGADO`, `detalle: Pago denegado`. Inventario sin cambios; no se registra venta.
+
+### Escenario 3. Otro cliente compra el ultimo stock
+
+Luego de que una compra agote las entradas disponibles, realizar otra solicitud de pago con el mismo evento y sector:
+
+```json
+{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":2,"tarjetaPrueba":"RECHAZADA"}
+```
+
+**Esperado: HTTP 409** y `Los lugares seleccionados ya no se encuentran disponibles`. El servicio valida stock **antes** de llamar a la pasarela; por eso esta operacion no devuelve 402.
+
+### Errores adicionales
+
+- Cantidad `0` o negativa: 400.
+- Cliente o evento inexistentes, o sector ajeno al evento: 404.
+- Token de prueba que no sea `APROBADA` o `RECHAZADA`: 400.
+- Datos incompletos o JSON invalido: 400.
+
+La tabla `ventas` mostrara solo compras **aprobadas** y la tabla `entradas` mostrara estado y `venta_id`. Consultas sugeridas para H2:
+
+```sql
+SELECT * FROM VENTAS;
+SELECT ID, EVENTO_ID, SECTOR_ID, ESTADO, VENTA_ID, CODIGOQR FROM ENTRADAS;
+```
+
+## Decision de concurrencia y limitaciones
+
+**Proteccion real para este ejercicio:** una fila `PrecioSector` por combinacion de evento y sector funciona como punto de bloqueo. Las compras del mismo sector se serializan, de manera que no hay dos transacciones que seleccionen el mismo inventario a la vez. La transaccion abarca la verificacion, el pago simulado y la emision. Hay una prueba con dos hilos y una unica entrada.
+
+**Limitacion deliberada:** solo es apropiado para una pasarela simulada inmediata. En un sistema real **nunca se debe mantener bloqueada la transaccion de base de datos durante un pago de red**. Se requeririan reservas con vencimiento, una operacion de pago idempotente, reconciliacion, transacciones mas cortas y webhook autenticado. El endpoint `POST /api/v1/pagos/webhook-pagos` de la Etapa 1 permanece en 501: no interviene en el flujo sincrono de este TP.
+
+**Seguridad:** `tarjetaPrueba` no es el numero de una tarjeta real. No enviar PAN, CVV ni otro dato sensible. Las rutas no incluyen autenticacion/autorizacion porque el TP pide una API didactica; no debe exponerse publicamente como sistema de pagos real.
+
+## Archivos nuevos o actualizados (3.3)
+
+- Nuevos DTO `PagoRequest`, `PagoResponse`, `EntradaEmitidaResponse`.
+- Nuevo contrato `PasarelaPago` e implementacion `PasarelaPagoSimulada`.
+- Nuevo `PagoService` y `VentaRepository`.
+- Actualizados `PagoController`, `EntradaRepository`, `PrecioSectorRepository` y `ApiExceptionHandler`.
+- Nueva excepcion `PagoDenegadoException`.
+- Pruebas: `PagosTests` y `ConcurrenciaPagoTests`.
+
+Para registrar la etapa despues de comprobar el funcionamiento:
+
+```powershell
+git status
+git add .
+git commit -m "Etapa 3.3: HU2 pagos y emision de entradas"
+git push origin main
+```

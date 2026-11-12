@@ -1,10 +1,13 @@
 com\smartticket\exception\ApiExceptionHandler.class
 com\smartticket\repository\ClienteRepository.class
 com\smartticket\dto\ClienteResponse.class
+com\smartticket\repository\VentaRepository.class
 com\smartticket\controller\LugarController.class
 com\smartticket\controller\AccesoController.class
+com\smartticket\service\PasarelaPago.class
 com\smartticket\repository\EventoRepository.class
 com\smartticket\exception\RecursoNoEncontradoException.class
+com\smartticket\dto\PagoResponse.class
 com\smartticket\model\Venta.class
 com\smartticket\repository\EntradaRepository.class
 com\smartticket\service\SectorService.class
@@ -19,6 +22,7 @@ com\smartticket\dto\ClienteRequest.class
 com\smartticket\dto\InventarioSectorResponse.class
 com\smartticket\dto\ErrorResponse.class
 com\smartticket\dto\LugarResponse.class
+com\smartticket\dto\PagoRequest.class
 com\smartticket\repository\LugarRepository.class
 com\smartticket\dto\LugarRequest.class
 com\smartticket\repository\PrecioSectorRepository.class
@@ -29,6 +33,7 @@ com\smartticket\controller\EstadoController.class
 com\smartticket\service\EventoService.class
 com\smartticket\dto\CotizacionResponse.class
 com\smartticket\model\PrecioSector.class
+com\smartticket\dto\EntradaEmitidaResponse.class
 com\smartticket\controller\CotizacionController.class
 com\smartticket\service\CotizacionService.class
 com\smartticket\dto\SectorRequest.class
@@ -36,6 +41,8 @@ com\smartticket\controller\EventoController.class
 com\smartticket\dto\PrecioSectorRequest.class
 com\smartticket\model\Lugar.class
 com\smartticket\dto\SectorResponse.class
+com\smartticket\service\PagoService.class
+com\smartticket\exception\PagoDenegadoException.class
 com\smartticket\model\Entrada.class
 com\smartticket\config\OpenApiConfig.class
 com\smartticket\dto\InventarioEventoResponse.class
@@ -44,6 +51,7 @@ com\smartticket\dto\CotizacionRequest.class
 com\smartticket\dto\EventoCreacionRequest.class
 com\smartticket\repository\SectorRepository.class
 com\smartticket\service\LugarService.class
+com\smartticket\service\PasarelaPagoSimulada.class
 com\smartticket\controller\WebhookPagoController.class
 com\smartticket\model\Cliente.class
 com\smartticket\SmartTicketApplication.class
