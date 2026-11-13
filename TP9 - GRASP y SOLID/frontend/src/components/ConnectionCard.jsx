@@ -7,7 +7,7 @@ export default function ConnectionCard({ conexion, servicio, detalle, onReintent
       <div className="conexion-texto">
         <div className="encabezado-pequeno">ESTADO DEL BACKEND</div>
         <h3 id="conexion-titulo">Conexión con Spring Boot</h3>
-        <p>React consulta <code>GET /api/v1/estado</code> y la HU 1 utiliza los endpoints de eventos, inventario y cotización.</p>
+        <p>React consulta <code>GET /api/v1/estado</code> y las HU 1, HU 2 y HU 3 usan los endpoints de cotización, pagos y acceso.</p>
       </div>
       <div className="conexion-datos">
         <div className={`estado-api ${ok ? 'on' : conexion === 'verificando' ? 'pending' : 'off'}`} role="status" aria-live="polite">

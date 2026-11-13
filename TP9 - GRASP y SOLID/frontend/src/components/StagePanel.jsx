@@ -8,13 +8,6 @@ const DETALLES = {
     pasos: ['Seleccionar un evento', 'Elegir sector y cantidad', 'Verificar disponibilidad y cotizar'],
     endpoint: 'POST /api/v1/cotizaciones/cotizar',
   },
-  acceso: {
-    indice: '03', etiqueta: 'HU 3 · Control de acceso',
-    titulo: 'Cada entrada, un único ingreso.',
-    descripcion: 'En esta sección utilizaremos el identificador QR emitido en la compra para verificar y registrar el ingreso al evento.',
-    pasos: ['Introducir código QR', 'Validar estado, pago y fecha', 'Confirmar o rechazar el acceso'],
-    endpoint: 'POST /api/v1/accesos/escanear-acceso',
-  },
   explorador: {
     indice: '04', etiqueta: 'Consulta del sistema',
     titulo: 'El sistema, a la vista.',

@@ -5,7 +5,7 @@ import { comprobanteValido, mensajeErrorPago } from '../utils/pago.js';
 import './PagoPanel.css';
 
 /** HU 2: interfaz y feedback. El backend valida inventario, total, pago y emisión. */
-export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, onComprobante, onProcesando }) {
+export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, onComprobante, onProcesando, onProbarEntrada }) {
   const [clientes, setClientes] = useState([]);
   const [clienteId, setClienteId] = useState('');
   const [tarjetaPrueba, setTarjetaPrueba] = useState('APROBADA');
@@ -109,7 +109,7 @@ export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, 
             ? 'La venta fue registrada por SmartTicket y cada entrada tiene su identificador QR único.'
             : 'La pasarela es ficticia: solo admite APROBADA y RECHAZADA. No ingreses números de tarjetas reales.'}</p>
         </div>
-        <div className="paso-estado"><span className="paso-bola">02</span><span>PAGO<br/><strong>Etapa 4.3</strong></span></div>
+        <div className="paso-estado"><span className="paso-bola">02</span><span>PAGO<br/><strong>Etapa 4.4</strong></span></div>
       </div>
 
       <div className="pago-columnas">
@@ -171,7 +171,7 @@ export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, 
           {compra && (
             <div className="tickets-contenedor" aria-label="Entradas emitidas">
               <div className="form-titulo"><h3>Tus entradas emitidas</h3><span>{compra.entradas.length} CÓDIGOS</span></div>
-              <p className="mensaje-suave">Estos códigos son identificadores de texto válidos para SmartTicket, no imágenes QR escaneables. Podrás copiarlos para probar el control de acceso en la HU 3.</p>
+              <p className="mensaje-suave">Estos códigos son identificadores de texto válidos para SmartTicket, no imágenes QR escaneables. Podés copiarlos o enviarlos directamente a la pestaña Control de acceso para comprobar la HU 3.</p>
               <div className="tickets-lista">
                 {compra.entradas.map((entrada, indice) => (
                   <article className="ticket-emitido" key={entrada.entradaId ?? indice}>
@@ -180,6 +180,9 @@ export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, 
                     <code className="ticket-codigo">{entrada.codigoQR}</code>
                     <button type="button" className="boton-copiar" onClick={() => copiarQR(entrada.codigoQR)}>
                       {copiado === entrada.codigoQR ? '✓ Código copiado' : 'Copiar código QR'}
+                    </button>
+                    <button type="button" className="boton-probar-qr" onClick={() => onProbarEntrada(entrada)}>
+                      Probar acceso con esta entrada →
                     </button>
                   </article>
                 ))}

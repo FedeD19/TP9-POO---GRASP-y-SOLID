@@ -56,6 +56,9 @@ export const api = {
   inventarioEvento: (eventoId, signal) =>
     request(`/eventos/${encodeURIComponent(eventoId)}/inventario`, { signal }),
   clientes: (signal) => request('/clientes', { signal }),
+  escanearAcceso: (codigoQR, signal) => request('/accesos/escanear-acceso', {
+    method: 'POST', body: { codigoQR }, signal,
+  }),
   iniciarPago: ({ clienteId, eventoId, sectorId, cantidad, tarjetaPrueba }, signal) =>
     request('/pagos/iniciar-pago', {
       method: 'POST',

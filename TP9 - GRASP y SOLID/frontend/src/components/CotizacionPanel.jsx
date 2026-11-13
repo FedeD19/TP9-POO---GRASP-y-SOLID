@@ -128,7 +128,7 @@ export default function CotizacionPanel({ onContinuarPago }) {
           <h2 id="hu1-titulo">Elegí tu evento.<br/><span>Conocé tu precio.</span></h2>
           <p>Seleccioná un evento y un sector; SmartTicket consultará las entradas disponibles y calculará la cotización en Spring Boot.</p>
         </div>
-        <div className="paso-estado"><span className="paso-bola">01</span><span>COTIZACIÓN<br/><strong>Etapa 4.3</strong></span></div>
+        <div className="paso-estado"><span className="paso-bola">01</span><span>COTIZACIÓN<br/><strong>Etapa 4.4</strong></span></div>
       </div>
 
       <div className="cotizacion-columnas">

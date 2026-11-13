@@ -11,3 +11,5 @@
 .pago-opcion:focus-within,.pago-volver:focus-visible{outline:2px solid #5ccaff;outline-offset:2px}
 @media(max-width:950px){.pago-columnas{grid-template-columns:1fr}.pago-resumen{border-left:0;border-top:1px solid #2a3c50}.pago-encabezado{padding:32px}.pago-principal,.pago-resumen{padding:30px 32px}}
 @media(max-width:530px){.pago-encabezado{padding:26px 20px;flex-direction:column}.pago-principal,.pago-resumen{padding:25px 20px}.compra-total{margin-left:0;width:100%}.ticket-superior{flex-wrap:wrap}}
+
+.boton-probar-qr{display:inline-flex;align-items:center;gap:8px;margin:12px 0 0 10px;border:1px solid #39937a;border-radius:9px;padding:9px 13px;background:#1c5147;color:#ddfff2;font-size:12px;font-weight:750}.boton-probar-qr:hover{background:#247363}@media(max-width:530px){.boton-probar-qr{margin-left:0;width:100%;justify-content:center}}

@@ -1,120 +1,134 @@
-# SmartTicket — Frontend Etapa 4.3: HU 2 Pago y emisión
+# SmartTicket — Frontend Etapa 4.4: Control de acceso (HU 3)
 
-Frontend React 18 + Vite 5 que **se suma al backend estable Java de la Etapa 3.4**. Continúa funcionando la HU 1 de la Etapa 4.2 y se conecta ahora la HU 2 a la pasarela simulada del backend.
+React 18 + Vite 5 conectado al backend Java estable (Etapa 3.4). Las tres historias de usuario funcionan desde la interfaz: cotización, pago simulado y escaneo por texto del QR. **Explorador** sigue pendiente.
 
-## Iniciar en VSCode (PowerShell, Windows)
+## Arrancar en VSCode (PowerShell Windows)
 
-Abrí **dos terminales integradas**.
-
-**Terminal 1, carpeta que contiene `pom.xml`:**
+En la primera terminal, en la carpeta con `pom.xml`:
 
 ```powershell
 mvn spring-boot:run
 ```
 
-**Terminal 2, carpeta `frontend/`:**
-
-```powershell
-cd frontend
-npm.cmd run test
-npm.cmd run dev
-```
-
-Abrí <http://localhost:5173>. En la computadora de este proyecto se utiliza **`npm.cmd`** porque la política de ejecución de PowerShell bloquea `npm.ps1`. Si faltan `node_modules`, ejecutá una vez `npm.cmd ci` desde `frontend/` (no se agregaron dependencias en la Etapa 4.3).
-
-Para compilar la web: `npm.cmd run build`. El proxy de Vite redirige `/api` a `http://localhost:8080`; la API Java no cambia.
-
-## Qué se implementó
-
-- **HU 1** sigue cargando `GET /api/v1/eventos`, `GET /api/v1/eventos/{id}/inventario` y cotizando con `POST /api/v1/cotizaciones/cotizar`.
-- **Nuevo:** después de una cotización exitosa, el botón **Continuar a pago simulado** transporta la selección confirmada a la pestaña HU 2.
-- **Nuevo:** HU 2 carga clientes con `GET /api/v1/clientes` y permite seleccionar `APROBADA` o `RECHAZADA` sin campos de tarjeta real.
-- **Nuevo:** POST `/api/v1/pagos/iniciar-pago` con `{ clienteId, eventoId, sectorId, cantidad, tarjetaPrueba }`. Solo el backend determina el precio y la disponibilidad al pagar.
-- **Nuevo:** respuesta `PAGADA` con entradas `EMITIDA`: se muestra `ventaId`, total realmente confirmado, entradas y sus `codigoQR`. Hay botón para copiar cada código.
-- **Nuevo:** mensajes adecuados para 402 (pago rechazado), 409 (se agotaron entradas), errores de red y 404.
-- Se evita un segundo clic de pago mientras la petición está en curso y se bloquea temporalmente la navegación entre pestañas hasta obtener respuesta.
-- La pestaña de **Acceso (HU 3)** y el **Explorador** siguen pendientes de integración. El código QR se entrega como **identificador de texto**, no como imagen escaneable.
-
-## Preparación: datos de H2
-
-H2 está en memoria. Si reiniciaste Java, hay que cargar los datos desde Swagger en <http://localhost:8080/swagger-ui.html>:
-
-1. `POST /api/v1/lugares`:
-
-```json
-{"nombre":"Estadio Central","direccion":"Av. Principal 123"}
-```
-
-2. `POST /api/v1/sectores` (usar ID real del lugar):
-
-```json
-{"nombre":"Platea","capacidadMaxima":3,"lugarId":1}
-```
-
-3. `POST /api/v1/eventos` (usar los IDs reales):
-
-```json
-{"nombre":"Rock Fest","fechaHora":"2026-12-20T21:00:00","lugarId":1,"preciosSectores":[{"sectorId":1,"precio":12000.00}]}
-```
-
-4. **Nuevo para HU 2:** `POST /api/v1/clientes`:
-
-```json
-{"nombre":"Ana Perez","email":"ana@example.com"}
-```
-
-## Pruebas desde la interfaz
-
-1. **Cotización correcta:** ingresá en Cotización, elegí Rock Fest / Platea y cantidad 2. Ejecutá **Calcular cotización**. Total esperado $24.000 y 3 entradas disponibles (si usaste los datos anteriores).
-2. **Paso al pago:** pulsá **Continuar a pago simulado**. Comprobá que el evento, sector, cantidad y total se conservan. Seleccioná el cliente Ana Perez.
-3. **Pago rechazado:** elegí `RECHAZADA` y enviá. Debe aparecer el error HTTP 402, sin comprobante y sin alterar el inventario. Podés cambiar a `APROBADA` sin recotizar si el stock sigue disponible.
-4. **Pago aprobado:** elegí `APROBADA` y enviá. Debe mostrar venta `PAGADA`, total $24.000, dos entradas `EMITIDA` y **dos códigos QR distintos**.
-5. **Comprobar inventario:** regresá a Cotización y consultá inventario. De las tres entradas iniciales, debe quedar **1 disponible**. La cotización no reduce el stock; el pago sí.
-6. **Sin suficiente stock:** cotizá una entrada en Platea, aprobá el pago, y luego intentá comprar otra. Cuando ya esté agotado el sector, la cotización debería impedir la compra. También podés simular 409 cotizando desde dos pestañas de navegador mientras compiten por la última entrada; al pagar, el backend rechazará la que perdió stock.
-7. **Sin clientes:** reiniciá Java y creá evento pero no cliente; Pago muestra cómo cargar uno desde Swagger.
-8. **Acceso al QR:** copiá un código para usarlo en Swagger con `POST /api/v1/accesos/escanear-acceso` (la entrada deberá corresponder a un evento cuya fecha sea hoy). El frontend de acceso se conectará en la Etapa 4.4.
-
-> El frontend **no persiste** comprobantes ni QR en `localStorage`: se mantienen solo en la sesión React actual. Copiá los códigos antes de recargar la página. No se usan tarjetas ni cargos reales.
-
-## Pruebas automáticas
+En una segunda terminal integrada, desde la carpeta `frontend`:
 
 ```powershell
 cd frontend
 npm.cmd run test
 npm.cmd run build
+npm.cmd run dev
 ```
 
-Las **13 pruebas** del cliente REST y utilidades cubren las HU 1 y HU 2, casos 402/409 y validación del comprobante. La compilación de Vite verifica la construcción del frontend. La integración con Spring Boot debe comprobarse ejecutando ambos servidores localmente.
+Abrí http://localhost:5173. Utilizamos `npm.cmd` porque PowerShell bloquea `npm.ps1`. `npm.cmd ci` es necesario solamente si falta `node_modules` (no agregamos dependencias nuevas). El proxy Vite conecta las rutas `/api` con Spring Boot en localhost:8080; el backend no se modificó.
 
-## Estructura de los archivos nuevos
+## Funcionalidades
 
-```text
-frontend/src/
-├── App.jsx                       # Estado compartido HU 1 -> HU 2; conserva recibo
-├── components/
-│   ├── CotizacionPanel.jsx        # HU 1 + botón continuar
-│   ├── PagoPanel.jsx              # HU 2 real
-│   ├── PagoPanel.css              # Estilos de pago/entradas
-│   └── Navbar.jsx                # Navegación protegida durante pago
-├── services/api.js               # Añade GET clientes + POST iniciar-pago
-└── utils/pago.js                  # Validación de selección y comprobante
-frontend/tests/pago.test.js       # 6 pruebas nuevas
+- **HU 1 Cotización:** eventos, sectores, precios, inventario y total real desde Spring Boot.
+- **HU 2 Pago:** selecciona cliente, simula `APROBADA`/`RECHAZADA`, muestra comprobante y cada identificador `codigoQR`.
+- **HU 3 Acceso:** desde cualquier entrada emitida, pulsá **Probar acceso con esta entrada**. También podés entrar en **Control de acceso**, elegir uno de los códigos de la última compra o pegar uno manualmente. La solicitud se hace con `POST /api/v1/accesos/escanear-acceso` y JSON `{ "codigoQR": "..." }`.
+- La respuesta correcta trae `mensaje: "Acceso Permitido"`, `estado: "UTILIZADA"` y `fechaHoraIngreso`. La interfaz muestra el evento, número de entrada, sector y hora de ingreso.
+- Maneja **403** (no emitida / sin venta pagada), **404** (QR inexistente), **409** (entrada ya utilizada o evento de otra fecha) y errores de red. El frontend rechaza códigos vacíos antes de enviarlos; el backend también retorna HTTP 400 si se le envía directamente una solicitud inválida.
+- Durante el escaneo se bloquea el botón y la navegación entre pestañas para evitar solicitudes accidentales duplicadas. El backend también protege la entrada con bloqueo de escritura en H2.
+
+**Importante:** los QR son *códigos de texto*, no imágenes QR escaneables. No se usa cámara ni se almacenan entradas permanentemente en el navegador. La última compra desaparece al recargar la página, pero su venta y las entradas permanecen en H2 mientras Spring Boot esté abierto.
+
+## Preparación de datos de prueba: evento de hoy
+
+El backend valida la fecha del evento usando `smartticket.zona-horaria=America/Argentina/Buenos_Aires`. El ejemplo de Rock Fest del **20/12/2026** usado en etapas anteriores generará **HTTP 409** si se intenta entrar otro día, aunque la venta esté pagada.
+
+Consultá hoy desde PowerShell:
+
+```powershell
+Get-Date -Format 'yyyy-MM-dd'
 ```
 
-## ¿Qué principios aplicamos?
+Reemplazá `AAAA-MM-DD` por ese resultado **dentro del campo `fechaHora`** del JSON del evento.
 
-- **SRP:** `PagoPanel` gestiona presentación, `api.js` centraliza HTTP, `PagoService` implementa reglas de negocio.
-- **Bajo Acoplamiento:** React solo conoce el contrato REST, no entidades JPA ni consultas SQL.
-- **Indirección / DIP:** el backend conserva `PasarelaPago` como abstracción, reemplazable por otra implementación.
-- **Experto en Información:** Java obtiene el precio de `PrecioSector` y el inventario de `Entrada`, no del total mostrado por React.
+Desde Swagger (http://localhost:8080/swagger-ui.html) creá:
 
-## Versión Git
+1. Lugar: `POST /api/v1/lugares`
+
+   ```json
+   {"nombre":"Estadio Central","direccion":"Av. Principal 123"}
+   ```
+
+2. Sector: `POST /api/v1/sectores` — reemplazá `lugarId` por el ID creado.
+
+   ```json
+   {"nombre":"Platea","capacidadMaxima":3,"lugarId":1}
+   ```
+
+3. Evento: `POST /api/v1/eventos` — fecha **de hoy**, precio positivo, ID de sector real.
+
+   ```json
+   {"nombre":"Rock Fest","fechaHora":"AAAA-MM-DDT21:00:00","lugarId":1,"preciosSectores":[{"sectorId":1,"precio":12000.00}]}
+   ```
+
+4. Cliente: `POST /api/v1/clientes`
+
+   ```json
+   {"nombre":"Ana Perez","email":"ana.acceso@example.com"}
+   ```
+
+Si H2 ya tiene datos, usá los IDs reales de las respuestas, no asumas que serán 1. Si creaste más sectores en el lugar, agregá el precio de cada uno en `preciosSectores`.
+
+## Comprobar los escenarios en React
+
+1. Cotizá dos entradas de Platea a $12.000. Debe devolver $24.000 sin reducir stock.
+2. Continuá al Pago, elegí a Ana y `APROBADA`. Debe registrar la venta `PAGADA`, emitir dos entradas `EMITIDA` y devolver dos QR distintos.
+3. Presioná **Probar acceso con esta entrada** junto a la primera entrada. Control de acceso precarga ese código. Ejecutá el escaneo. Debe aparecer **Acceso Permitido**, `UTILIZADA` y la hora.
+4. Enviá nuevamente el mismo código: debe devolver **HTTP 409**, entrada ya utilizada (sin registrar otro ingreso).
+5. Elegí el segundo QR de la última compra: debe autorizarlo por separado (si el evento es hoy).
+6. Pegá `qr-inventado-123`: **HTTP 404**, QR inexistente.
+7. En H2 Console (`http://localhost:8080/h2-console`) buscá una entrada sin pagar:
+
+   ```sql
+   SELECT ID, CODIGOQR, ESTADO, VENTA_ID FROM ENTRADAS WHERE ESTADO = 'DISPONIBLE';
+   ```
+
+   Pegá uno de esos QR en Control de acceso; debe devolver **HTTP 403**.
+8. Para la condición de fecha incorrecta, comprá una entrada para un evento de otra fecha y escaneala. Debe devolver **HTTP 409** por fecha, distinto del error de ingreso duplicado.
+9. Consultá `GET /api/v1/eventos/{id}/inventario`: la entrada aceptada ya figura como `UTILIZADA`. El escaneo no altera la capacidad total.
+
+En H2 Console, la URL JDBC es `jdbc:h2:mem:smartticket;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`, usuario `sa`, contraseña vacía.
+
+## Pruebas automatizadas
+
+```powershell
+npm.cmd run test
+npm.cmd run build
+```
+
+Se agregaron diez pruebas de HU 3 al cliente y utilidades; el total es **23 pruebas**. Incluyen el contrato REST, resultado correcto, códigos vacíos, 403/404/409 (dos causas distintas), falla de red y hora de ingreso.
+
+No hay cambios en `pom.xml` ni en `src/main/java`. Mantené también tus 41 pruebas de Maven ejecutando `mvn clean test` si deseás volver a comprobar el backend.
+
+## Archivos de esta etapa
+
+| Archivo | Cambio |
+|---|---|
+| `src/components/AccesoPanel.jsx` | Formulario de QR, estados de la operación y resultados. |
+| `src/components/AccesoPanel.css` | Estilos y diseño responsive del acceso. |
+| `src/services/api.js` | Método REST `escanearAcceso`. |
+| `src/utils/acceso.js` | Validaciones de presentación y mensajes de errores. |
+| `src/App.jsx` | Conexión Pago → Acceso y conservación de QR en memoria. |
+| `src/components/PagoPanel.jsx` | Botón para probar cada QR emitido. |
+| `tests/acceso.test.js` | Diez pruebas de HU 3. |
+
+## Principios aplicados
+
+- **SRP:** `AccesoPanel` presenta el formulario; `api.js` realiza HTTP; `AccesoService` mantiene las reglas de ingreso.
+- **Controlador / Bajo Acoplamiento (GRASP):** React no consulta H2 ni modifica estados de entradas directamente; hace la solicitud a `AccesoController`.
+- **Experto en Información:** Java consulta el estado de `Entrada`, su `Venta` y la fecha de `Evento`.
+- **Integridad transaccional:** el backend conserva su transacción y bloqueo pesimista para impedir dos ingresos con el mismo QR.
+
+Cuando termines las pruebas:
 
 ```powershell
 git status
 git add frontend
-git commit -m "Etapa 4.3: integrar HU2 pago y emision con React"
+git commit -m "Etapa 4.4: integrar HU3 control de acceso con React"
 git push origin main
 ```
 
-No incluir `frontend/node_modules/`, `frontend/dist/` ni registros de prueba. Conservá el `pom.xml` y `src/` del backend original.
+No subas `frontend/node_modules`, `frontend/dist` ni informes temporales. La próxima etapa es el explorador de datos.
