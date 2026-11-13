@@ -272,8 +272,6 @@ Esta entrega funciona como **prototipo académico local**. Entre los aspectos pe
 
 - **[GRASP y SOLID](docs/GRASP_SOLID.md)** — patrones y principios de diseño aplicados a SmartTicket, con ejemplos de clases, arquitectura, decisiones técnicas y limitaciones.
 - **[Frontend: instalación y funcionamiento](frontend/README.md)** — comandos de React + Vite y pestañas disponibles.
-- **[Guía de la Etapa 4.5](GUIA_ETAPA4_5.md)** — detalles de integración del Explorador.
-- **[Guía de la Etapa 4.3](GUIA_ETAPA4_3.md)** y **[Guía de la Etapa 4.4](GUIA_ETAPA4_4.md)** — documentación histórica de las integraciones de Pago y Acceso.
 
 ---
 
