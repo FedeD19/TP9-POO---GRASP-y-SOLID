@@ -1,0 +1,20 @@
+:root {
+  font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --bg: #0c1017;
+  --surface: #141b24;
+  --surface2: #1b2635;
+  --border: #2b3a4b;
+  --text: #f3f7fd;
+  --muted: #a0aec1;
+  --cyan: #38bdf8;
+  --blue: #60a5fa;
+}
+* {box-sizing: border-box;}
+html {min-width: 320px;}
+body {margin: 0; background: var(--bg); color: var(--text); line-height: 1.5;}
+button {font: inherit; cursor: pointer;}
+button:focus-visible, a:focus-visible {outline: 2px solid var(--cyan);outline-offset: 3px;}
+code {font-family: 'Cascadia Code', Consolas, monospace;}
