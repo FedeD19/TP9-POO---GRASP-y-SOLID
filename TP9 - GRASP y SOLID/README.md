@@ -1,344 +1,221 @@
-# SmartTicket — TP9 GRASP y SOLID — Etapa 3.2
+# SmartTicket — TP 9: GRASP y SOLID aplicados
 
-**HU 1: Selección y cotización**, sobre la Etapa 3.1 (precios específicos por evento/sector y generación automática de entradas).
+## Etapa 3.4 — HU 3: Control de Acceso en Puerta
 
-Proyecto Java 21, Spring Boot 3.5.16, Maven, Spring Data JPA, H2, Bean Validation y Swagger/OpenAPI.
+Proyecto basado **directamente en la Etapa 3.3 estable**. Java 21, Spring Boot 3.5.16, Maven, JPA/Hibernate, H2 y Swagger/OpenAPI.
 
-## 1. Qué funciona
+### Funcionalidades actuales
 
-- CRUD de **Lugar, Sector, Evento y Cliente** (Etapa 2).
-- Registro de **precios por evento y sector**, y generación de entradas `DISPONIBLE` al crear un evento (Etapa 3.1).
-- Consulta de inventario: `GET /api/v1/eventos/{id}/inventario`.
-- **Cotización:** `POST /api/v1/cotizaciones/cotizar` (Etapa 3.2).
-- **Pendiente:** iniciar pago, webhook de pagos y escaneo de acceso; conservan la respuesta 501.
+| Etapa | Funcionalidad | Estado |
+|---|---|---|
+| 1 | Infraestructura y controladores | Completada |
+| 2 | CRUD de Lugar, Sector, Evento y Cliente | Completada |
+| 3.1 | Precio específico por evento/sector; generación de entradas disponibles y QR | Completada |
+| 3.2 / HU 1 | Cotización según precio y disponibilidad | Completada |
+| 3.3 / HU 2 | Pago ficticio, creación de ventas pagadas, emisión de entradas; concurrencia | Completada |
+| **3.4 / HU 3** | **Validación de QR, acceso único y registro de hora de ingreso** | **Implementada** |
+| Adicional | `POST /api/v1/pagos/webhook-pagos` | Pendiente (501); la pasarela simulada es síncrona |
 
-En esta versión, **cotizar NO reserva, vende ni emite entradas**, y tampoco cambia su estado. El resultado es orientativo hasta intentar comprar; HU 2 verificará nuevamente el inventario.
+**Importante:** el `codigoQR` es un identificador de texto tipo UUID, no una imagen QR. Se entrega al aprobar la compra. No se usan tarjetas reales.
 
-## 2. Ejecutar en Windows con VSCode
+## 1. Ejecutar en VSCode
 
-Abrir la carpeta del proyecto donde está `pom.xml` y ejecutar en PowerShell:
+Desde PowerShell en la carpeta que contiene `pom.xml`:
 
 ```powershell
 mvn clean test
 mvn spring-boot:run
 ```
 
-Si Maven finaliza las pruebas correctamente, mostrará `BUILD SUCCESS`.
-
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- Estado: http://localhost:8080/api/v1/estado
-- Consola H2: http://localhost:8080/h2-console
+- Swagger UI: <http://localhost:8080/swagger-ui.html>
+- Estado: <http://localhost:8080/api/v1/estado>
+- Consola H2: <http://localhost:8080/h2-console>
 - JDBC URL: `jdbc:h2:mem:smartticket;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE`
-- Usuario H2: `sa`; contraseña: vacía.
+- Usuario H2: `sa`; contraseña vacía.
 
-La base H2 está **en memoria**: sus registros desaparecen al detener Spring Boot.
+H2 es **en memoria**: al detener Spring Boot se pierden los registros de esa ejecución. Las pruebas automatizadas usan sus propias bases aisladas.
 
-## 3. Preparación de los datos en Swagger
+## 2. Pruebas manuales completas desde Swagger
 
-### A. Crear Lugar
+**El evento debe tener la fecha local de hoy.** En esta HU 3 se comprueba expresamente que el QR pertenezca al evento del día. El ejemplo con Rock Fest el 20 de diciembre que se usaba antes **no permitirá entrar si hoy es otra fecha**.
 
-`POST /api/v1/lugares` (esperado **201**):
+Para consultar la fecha local desde PowerShell:
 
-```json
-{
-  "nombre": "Estadio Central",
-  "direccion": "Av. Principal 123"
-}
+```powershell
+Get-Date -Format 'yyyy-MM-dd'
 ```
 
-Anotar el `id` real de la respuesta. En los ejemplos siguientes se supone que vale `1`.
+En el JSON de creación de evento reemplazá `AAAA-MM-DD` por la fecha que te devuelva ese comando, por ejemplo `2026-11-12T21:00:00` si hoy es el 12 de noviembre de 2026. La zona horaria del sistema es configurable mediante `smartticket.zona-horaria` (valor inicial `America/Argentina/Buenos_Aires`).
 
-### B. Crear dos sectores
-
-`POST /api/v1/sectores` dos veces (esperado **201**):
+**Paso A — Lugar:** `POST /api/v1/lugares` (**201**)
 
 ```json
-{
-  "nombre": "Platea",
-  "capacidadMaxima": 3,
-  "lugarId": 1
-}
+{"nombre":"Estadio Central","direccion":"Av. Principal 123"}
 ```
+
+**Paso B — Sector:** `POST /api/v1/sectores` (**201**)
 
 ```json
-{
-  "nombre": "VIP",
-  "capacidadMaxima": 1,
-  "lugarId": 1
-}
+{"nombre":"Platea","capacidadMaxima":3,"lugarId":1}
 ```
 
-Anotar sus IDs. En los ejemplos siguientes se supone `1` para Platea y `2` para VIP. Usamos capacidades pequeñas para facilitar las pruebas.
-
-### C. Crear Evento con precios
-
-`POST /api/v1/eventos` (esperado **201**):
+**Paso C — Evento de HOY:** `POST /api/v1/eventos` (**201**)
 
 ```json
 {
   "nombre": "Rock Fest",
-  "fechaHora": "2026-12-20T21:00:00",
+  "fechaHora": "AAAA-MM-DDT21:00:00",
   "lugarId": 1,
-  "preciosSectores": [
-    { "sectorId": 1, "precio": 12000.00 },
-    { "sectorId": 2, "precio": 25000.00 }
-  ]
+  "preciosSectores": [{"sectorId":1,"precio":12000.00}]
 }
 ```
 
-Se debe indicar precio para **todos los sectores del lugar, sin duplicados**, como exige la Etapa 3.1. Anotar el ID real del evento; el ejemplo supone `1`.
+El campo `fechaHora` debe llevar una **fecha real** (números) al ejecutar. Si el lugar tiene más sectores, indicar precio para cada uno.
 
-### D. Verificar inventario
+**Paso D — Cliente:** `POST /api/v1/clientes` (**201**)
 
-`GET /api/v1/eventos/1/inventario`: se esperan 3 entradas Platea, 1 VIP, todas `DISPONIBLE`.
+```json
+{"nombre":"Ana Perez","email":"ana-acceso@example.com"}
+```
 
-## 4. HU 1: ejecutar las tres pruebas de aceptación
-
-Abrir en Swagger: **Cotizaciones** → `POST /api/v1/cotizaciones/cotizar` → **Try it out**.
-
-### Escenario 1. Cotización exitosa (HTTP 200)
+**Paso E — Pago y emisión:** `POST /api/v1/pagos/iniciar-pago` (**200**)
 
 ```json
 {
+  "clienteId": 1,
   "eventoId": 1,
   "sectorId": 1,
-  "cantidad": 2
+  "cantidad": 2,
+  "tarjetaPrueba": "APROBADA"
 }
 ```
 
-Respuesta ejemplo:
+La respuesta contiene `ventaId`, `estado: PAGADA`, `total` y `entradas` con dos pares `{entradaId, estado, codigoQR}`. **Copiá uno de los `codigoQR` reales**. Los IDs 1 de este ejemplo son ilustrativos: usar siempre los IDs recibidos en los pasos anteriores.
+
+### Escenario 1. Ingreso exitoso (HTTP 200)
+
+`POST /api/v1/accesos/escanear-acceso`:
+
+```json
+{"codigoQR":"PEGA_AQUI_EL_CODIGO_REAL_DE_LA_COMPRA"}
+```
+
+Respuesta de ejemplo (con datos ilustrativos):
 
 ```json
 {
+  "mensaje": "Acceso Permitido",
+  "entradaId": 1,
   "eventoId": 1,
   "evento": "Rock Fest",
   "sectorId": 1,
-  "sector": "Platea",
-  "cantidad": 2,
-  "precioUnitario": 12000.00,
-  "subtotal": 24000.00,
-  "total": 24000.00,
-  "entradasDisponibles": 3
+  "estado": "UTILIZADA",
+  "fechaHoraIngreso": "2026-11-12T20:45:00.123456"
 }
 ```
 
-**Cálculo:** `12000.00 × 2 = 24000.00`. Como no hay descuentos, comisiones ni impuestos en la HU 1, `subtotal == total`.
+El timestamp corresponde al instante real del escaneo en la zona horaria configurada; el ejemplo no es un valor fijo.
 
-### Escenario 2. Disponibilidad insuficiente (HTTP 400)
+### Escenario 2. Reutilización del mismo QR (HTTP 409)
+
+Volvé a enviar exactamente el mismo QR. Respuesta:
 
 ```json
-{
-  "eventoId": 1,
-  "sectorId": 2,
-  "cantidad": 3
-}
+{"error":"CONFLICTO","detalle":"Entrada ya utilizada"}
 ```
 
-Hay 1 entrada VIP, pero se solicitan 3:
+El estado sigue `UTILIZADA` y **la fecha y hora originales no cambian**.
+
+### Escenario 3. QR inválido o desconocido (HTTP 404)
 
 ```json
-{
-  "error": "VALIDACION",
-  "detalle": "Capacidad insuficiente o entradas no disponibles"
-}
+{"codigoQR":"qr-inventado-123"}
 ```
 
-### Escenario 3. Cantidad inválida (HTTP 400)
+Respuesta:
 
 ```json
-{
-  "eventoId": 1,
-  "sectorId": 1,
-  "cantidad": 0
-}
+{"error":"NO_ENCONTRADO","detalle":"Ticket Inválido o Inexistente"}
 ```
 
-Repetir con `-1`. Respuesta:
+### Escenario 4. Entrada no emitida / sin pago (HTTP 403)
+
+Antes de pagar, las entradas generadas por el evento están en `DISPONIBLE`, aunque ya tengan `codigoQR`. Para simular el escaneo de una de esas entradas, entrá en H2 Console y consultá:
+
+```sql
+SELECT ID, CODIGOQR, ESTADO, VENTA_ID FROM ENTRADAS;
+```
+
+Copiá un QR de una entrada `DISPONIBLE` (o `RESERVADA` si hiciste una modificación de prueba) y envialo al endpoint. Respuesta:
 
 ```json
-{
-  "error": "VALIDACION",
-  "detalle": "La cantidad de entradas solicitadas debe ser mayor a cero"
-}
+{"error":"ACCESO_DENEGADO","detalle":"Ticket no emitido / Falta de pago"}
 ```
+
+Una entrada `EMITIDA` cuyo `Venta.estado` sea distinto de `PAGADA`, o que carezca de venta, también es rechazada (comprobado por los tests).
 
 ### Verificaciones adicionales
 
-- Evento inexistente o sector no perteneciente al evento → **404 Not Found**.
-- Falta de alguno de los campos requeridos → **400 Bad Request**.
-- Dos cotizaciones consecutivas no alteran las entradas: consultar nuevamente `GET /api/v1/eventos/1/inventario` → los `disponibles` siguen iguales.
-- Una entrada `RESERVADA`, `EMITIDA` o `UTILIZADA` no se cuenta como disponible; esto se verifica en las pruebas automatizadas `CotizacionTests` (todavía no hay endpoints de pago que cambien estados).
+- **Evento de otra fecha:** una entrada emitida y pagada para un evento que no ocurre hoy produce **409 Conflict** con `La entrada no corresponde a un evento de hoy`.
+- **QR vacío, ausente o sin JSON:** produce **400 Bad Request** (validación de la solicitud).
+- **Escaneos concurrentes:** dos puestos intentan ingresar la misma entrada; el primero que adquiere el bloqueo la marca como `UTILIZADA`, y el otro es rechazado.
+- **Inventario:** `GET /api/v1/eventos/{id}/inventario` debe mostrar el paso de `EMITIDA` a `UTILIZADA` tras el ingreso.
 
-Los IDs `1` y `2` son **ilustrativos**. Usar los IDs reales devueltos en cada paso. Si probaste la base antes sin reiniciar, tal vez los IDs sean distintos.
-
-## 5. Archivos nuevos y modificados
+## 3. Archivos de la Etapa 3.4
 
 | Archivo | Cambio |
 |---|---|
-| `dto/CotizacionRequest.java` | Recibe `eventoId`, `sectorId`, `cantidad`. Valida IDs positivos y campos obligatorios. |
-| `dto/CotizacionResponse.java` | Expone identificación, cantidad, precio unitario, subtotal, total y disponibilidad actual. |
-| `service/CotizacionService.java` | Comprueba cantidad positiva **antes de consultar repositorios**, valida el evento/sector, cuenta entradas `DISPONIBLE` y calcula con `BigDecimal`. |
-| `controller/CotizacionController.java` | Reemplaza la respuesta 501 de HU 1 por un endpoint POST con `@Valid @RequestBody`, que delega en el servicio. |
-| `test/CotizacionTests.java` | Seis pruebas automatizadas que cubren HU 1, estados de entradas, errores y precios por evento. |
-| `model/Evento.java` | Actualización de un comentario desactualizado. |
-| `pom.xml` | Actualización de la descripción del proyecto; no se cambian dependencias. |
+| `dto/AccesoRequest.java` | Nuevo DTO; valida `codigoQR` no vacío. |
+| `dto/AccesoResponse.java` | Nuevo DTO; devuelve mensaje, entrada, evento, sector, estado y hora. |
+| `service/AccesoService.java` | Nuevo servicio con todas las reglas de HU 3 y `@Transactional`. |
+| `repository/EntradaRepository.java` | Nueva búsqueda por QR con bloqueo pesimista (`PESSIMISTIC_WRITE`). |
+| `controller/AccesoController.java` | Reemplaza 501 por POST funcional y delega al servicio. |
+| `exception/AccesoDenegadoException.java` | Nuevo error de ticket no emitido/pago pendiente. |
+| `exception/ApiExceptionHandler.java` | Asocia ese error con HTTP 403. |
+| `config/RelojConfig.java` | Configura el `Clock` para la hora local del evento. |
+| `src/main/resources/application.properties` | Agrega `smartticket.zona-horaria`. |
+| `src/test/java/com/smartticket/AccesoTests.java` | Pruebas de HU 3 y casos adicionales. |
+| `src/test/java/com/smartticket/ConcurrenciaAccesoTests.java` | Simulación de dos escaneos simultáneos en BD independiente. |
+| `pom.xml`, `README.md` | Actualización de descripción y documentación. |
 
-Los endpoints `PagoController`, `WebhookPagoController` y `AccesoController` permanecen sin lógica de negocio.
+No se modificaron el servicio de pagos, el servicio de cotizaciones ni las reglas CRUD anteriores.
 
-## 6. GRASP y SOLID aplicados
+## 4. Decisiones de diseño GRASP/SOLID
 
-- **Controlador GRASP / SRP (SOLID):** `CotizacionController` conoce HTTP y delega el caso de uso; no consulta H2 ni multiplica importes.
-- **Experto en Información (GRASP):** el precio se obtiene de la entidad `PrecioSector`; los estados de las entradas están en `Entrada`. `CotizacionService` **coordina** esos datos y realiza el cálculo del caso de uso.
-- **Bajo acoplamiento / Indirección (GRASP):** el servicio depende de las interfaces `EventoRepository`, `PrecioSectorRepository` y `EntradaRepository`, inyectadas mediante el constructor.
-- **Alta cohesión (GRASP):** la lógica de cotizar reside en un servicio enfocado, separado de creación de eventos, persistencia, pagos y accesos.
-- **Precisión monetaria:** `BigDecimal.multiply(BigDecimal.valueOf(cantidad))` evita usar `double` para dinero.
-- **Solo lectura:** `@Transactional(readOnly = true)` expresa que cotizar no modifica la información. Una consulta es una foto del inventario, NO una garantía de disponibilidad futura.
+- **GRASP Controlador / SRP:** `AccesoController` recibe HTTP y delega. No conoce estados ni realiza consultas SQL.
+- **Alta cohesión:** `AccesoService` centraliza el caso de uso de acceso, separado de cotización y pagos.
+- **Experto en Información:** `Entrada` conserva su estado y hora; `Venta` conserva su estado de pago; `Evento` conserva su fecha.
+- **Bajo acoplamiento / Indirección:** el servicio utiliza `EntradaRepository` (interfaz Spring Data), inyectada por constructor.
+- **Programación defensiva:** se rechazan códigos inválidos, entradas no emitidas, ventas impagas y repeticiones.
+- **Concurrencia:** `@Lock(PESSIMISTIC_WRITE)` sobre la fila de la entrada serializa escaneos del mismo QR. `@Transactional` agrupa validación, cambio de estado y registro de la hora.
+- **Tiempo testeable:** un `Clock` inyectado permite definir la zona horaria en un solo lugar y evita llamar a la hora del sistema en varios componentes.
 
-## 7. Siguiente etapa (HU 2)
-
-Será necesario seleccionar entradas concretas y resolver la concurrencia correctamente al iniciar un pago (por ejemplo, usando bloqueo transaccional o actualizaciones condicionales). No es suficiente confiar en una cotización anterior: otro cliente podría comprar primero.
-
-## 8. Git (una vez que funcionen las pruebas)
-
-Integrar estos archivos en la **misma carpeta Git** de la Etapa 3.1. Conservar la carpeta `.git` existente y no copiar ni subir `target/`:
-
-```powershell
-git status
-git add .
-git commit -m "Etapa 3.2: HU1 seleccion y cotizacion"
-git push origin main
-```
-
-> Nota de verificación: el ZIP y su contenido pueden validarse en este entorno. Maven no está instalado y el entorno no puede acceder a los servidores de dependencias, por lo que el `BUILD SUCCESS` se debe confirmar ejecutando `mvn clean test` localmente.
-
----
-
-# Etapa 3.3 — HU 2: pago simulado y emision de entradas
-
-Esta etapa conserva los CRUD, la creacion de precios y entradas y la HU 1.
-Se incorpora una **pasarela de pagos de prueba**, sin tarjetas reales ni movimientos de dinero.
-
-## Flujo
-
-1. El cliente puede cotizar con `POST /api/v1/cotizaciones/cotizar` (no reserva nada).
-2. Para comprar, envia un POST a `/api/v1/pagos/iniciar-pago` con cliente, evento, sector, cantidad y un token ficticio.
-3. `PagoService` valida los datos y adquiere un bloqueo exclusivo (`PESSIMISTIC_WRITE`) sobre el registro de `PrecioSector` correspondiente a ese evento y sector.
-4. Solo despues de bloquear se seleccionan las entradas que continuan `DISPONIBLE`.
-5. Si la cantidad no alcanza, responde **409 Conflict** sin consultar la pasarela.
-6. Se recalcula el total con el precio de la base de datos y se consulta `PasarelaPago`.
-7. Si la pasarela rechaza el token de prueba, devuelve **402 Pago denegado**, sin crear ninguna venta ni modificar entradas.
-8. Si aprueba, guarda una `Venta` en `PAGADA`, vincula las entradas y las marca como `EMITIDA`. Retorna los QR que se crearon en la Etapa 3.1.
-
-El controlador **no tiene las reglas del negocio**. El servicio se encarga de la operacion, los repositorios acceden a H2 y `PasarelaPago` es una interfaz implementada por `PasarelaPagoSimulada` (DIP, SRP, Bajo Acoplamiento).
-
-### Preparacion para Swagger
-
-Ejecutar:
+## 5. Pruebas y aislamiento H2
 
 ```powershell
 mvn clean test
-mvn spring-boot:run
 ```
 
-Abrir `http://localhost:8080/swagger-ui.html`.
+La Etapa 3.3 estable traía **31 pruebas**. Se agregaron **9 pruebas de `AccesoTests` y una de `ConcurrenciaAccesoTests`**, para un total esperado de **41 pruebas** si todos los archivos están incluidos.
 
-H2 esta en memoria: si se reinicio Spring Boot, crear nuevamente las entidades. Se recomienda crear un lugar, un sector Platea con `capacidadMaxima: 3`, un evento con `precio: 12000` para ese sector y un cliente. Los IDs del ejemplo **deben reemplazarse por los IDs reales**.
+La prueba de concurrencia utiliza la base aislada `jdbc:h2:mem:smartticket_accesos_concurrentes`, mediante `@DynamicPropertySource`. Las pruebas habituales conservan `src/test/resources/application.properties` y su base `smartticket_pruebas`, evitando la contaminación de datos que habíamos solucionado en la Etapa 3.3.
 
-**Lugar:** `POST /api/v1/lugares`
+Si Maven produce un log extenso:
 
-```json
-{"nombre":"Estadio Central", "direccion":"Av. Principal 123"}
+```powershell
+cmd /c "mvn clean test > resultado-tests.txt 2>&1"
+Get-Content .\resultado-tests.txt -Tail 70
 ```
 
-**Sector:** `POST /api/v1/sectores`
+Este ZIP **no contiene `target/`**, porque Maven genera esa carpeta. El código fue revisado estáticamente, pero la ejecución completa de Maven debe verificarse en tu computadora.
 
-```json
-{"nombre":"Platea", "capacidadMaxima":3, "lugarId":1}
-```
-
-**Evento:** `POST /api/v1/eventos`
-
-```json
-{
-  "nombre":"Rock Fest",
-  "fechaHora":"2026-12-20T21:00:00",
-  "lugarId":1,
-  "preciosSectores":[{"sectorId":1,"precio":12000.00}]
-}
-```
-
-**Cliente:** `POST /api/v1/clientes`
-
-```json
-{"nombre":"Ana Perez", "email":"ana@example.com"}
-```
-
-### Escenario 1. Pago aprobado
-
-`POST /api/v1/pagos/iniciar-pago`
-
-```json
-{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":2,"tarjetaPrueba":"APROBADA"}
-```
-
-**Esperado: HTTP 200**; `estado: PAGADA`, `total: 24000`, dos entradas `EMITIDA` con sus `codigoQR`. `GET /api/v1/eventos/1/inventario` pasa de 3 disponibles a 1 disponible y 2 emitidas.
-
-### Escenario 2. Pago rechazado
-
-Crear otro evento o reiniciar el servidor para contar con stock nuevamente; ejecutar:
-
-```json
-{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":1,"tarjetaPrueba":"RECHAZADA"}
-```
-
-**Esperado: HTTP 402**, `error: PAGO_DENEGADO`, `detalle: Pago denegado`. Inventario sin cambios; no se registra venta.
-
-### Escenario 3. Otro cliente compra el ultimo stock
-
-Luego de que una compra agote las entradas disponibles, realizar otra solicitud de pago con el mismo evento y sector:
-
-```json
-{"clienteId":1,"eventoId":1,"sectorId":1,"cantidad":2,"tarjetaPrueba":"RECHAZADA"}
-```
-
-**Esperado: HTTP 409** y `Los lugares seleccionados ya no se encuentran disponibles`. El servicio valida stock **antes** de llamar a la pasarela; por eso esta operacion no devuelve 402.
-
-### Errores adicionales
-
-- Cantidad `0` o negativa: 400.
-- Cliente o evento inexistentes, o sector ajeno al evento: 404.
-- Token de prueba que no sea `APROBADA` o `RECHAZADA`: 400.
-- Datos incompletos o JSON invalido: 400.
-
-La tabla `ventas` mostrara solo compras **aprobadas** y la tabla `entradas` mostrara estado y `venta_id`. Consultas sugeridas para H2:
-
-```sql
-SELECT * FROM VENTAS;
-SELECT ID, EVENTO_ID, SECTOR_ID, ESTADO, VENTA_ID, CODIGOQR FROM ENTRADAS;
-```
-
-## Decision de concurrencia y limitaciones
-
-**Proteccion real para este ejercicio:** una fila `PrecioSector` por combinacion de evento y sector funciona como punto de bloqueo. Las compras del mismo sector se serializan, de manera que no hay dos transacciones que seleccionen el mismo inventario a la vez. La transaccion abarca la verificacion, el pago simulado y la emision. Hay una prueba con dos hilos y una unica entrada.
-
-**Limitacion deliberada:** solo es apropiado para una pasarela simulada inmediata. En un sistema real **nunca se debe mantener bloqueada la transaccion de base de datos durante un pago de red**. Se requeririan reservas con vencimiento, una operacion de pago idempotente, reconciliacion, transacciones mas cortas y webhook autenticado. El endpoint `POST /api/v1/pagos/webhook-pagos` de la Etapa 1 permanece en 501: no interviene en el flujo sincrono de este TP.
-
-**Seguridad:** `tarjetaPrueba` no es el numero de una tarjeta real. No enviar PAN, CVV ni otro dato sensible. Las rutas no incluyen autenticacion/autorizacion porque el TP pide una API didactica; no debe exponerse publicamente como sistema de pagos real.
-
-## Archivos nuevos o actualizados (3.3)
-
-- Nuevos DTO `PagoRequest`, `PagoResponse`, `EntradaEmitidaResponse`.
-- Nuevo contrato `PasarelaPago` e implementacion `PasarelaPagoSimulada`.
-- Nuevo `PagoService` y `VentaRepository`.
-- Actualizados `PagoController`, `EntradaRepository`, `PrecioSectorRepository` y `ApiExceptionHandler`.
-- Nueva excepcion `PagoDenegadoException`.
-- Pruebas: `PagosTests` y `ConcurrenciaPagoTests`.
-
-Para registrar la etapa despues de comprobar el funcionamiento:
+## 6. GitHub, después de verificar
 
 ```powershell
 git status
 git add .
-git commit -m "Etapa 3.3: HU2 pagos y emision de entradas"
+git commit -m "Etapa 3.4: HU3 control de acceso por QR"
 git push origin main
 ```
+
+Antes de hacer `git add .`, eliminar `resultado-tests.txt` si lo generaste, o excluirlo de Git.

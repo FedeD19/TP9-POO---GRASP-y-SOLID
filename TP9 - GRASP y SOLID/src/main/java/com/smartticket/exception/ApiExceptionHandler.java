@@ -29,6 +29,12 @@ public class ApiExceptionHandler {
                 .body(new ErrorResponse("PAGO_DENEGADO", ex.getMessage()));
     }
 
+    @ExceptionHandler(AccesoDenegadoException.class)
+    public ResponseEntity<ErrorResponse> accesoDenegado(AccesoDenegadoException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("ACCESO_DENEGADO", ex.getMessage()));
+    }
+
     @ExceptionHandler(ConflictoException.class)
     public ResponseEntity<ErrorResponse> conflicto(ConflictoException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -20,8 +20,10 @@ com\smartticket\dto\EventoResponse.class
 com\smartticket\controller\SectorController.class
 com\smartticket\dto\ClienteRequest.class
 com\smartticket\dto\InventarioSectorResponse.class
+com\smartticket\dto\AccesoRequest.class
 com\smartticket\dto\ErrorResponse.class
 com\smartticket\dto\LugarResponse.class
+com\smartticket\config\RelojConfig.class
 com\smartticket\dto\PagoRequest.class
 com\smartticket\repository\LugarRepository.class
 com\smartticket\dto\LugarRequest.class
@@ -51,7 +53,10 @@ com\smartticket\dto\CotizacionRequest.class
 com\smartticket\dto\EventoCreacionRequest.class
 com\smartticket\repository\SectorRepository.class
 com\smartticket\service\LugarService.class
+com\smartticket\service\AccesoService.class
 com\smartticket\service\PasarelaPagoSimulada.class
+com\smartticket\dto\AccesoResponse.class
+com\smartticket\exception\AccesoDenegadoException.class
 com\smartticket\controller\WebhookPagoController.class
 com\smartticket\model\Cliente.class
 com\smartticket\SmartTicketApplication.class

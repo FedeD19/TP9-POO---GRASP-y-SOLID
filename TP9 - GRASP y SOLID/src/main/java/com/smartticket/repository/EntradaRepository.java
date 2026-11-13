@@ -2,12 +2,19 @@ package com.smartticket.repository;
 
 import com.smartticket.model.Entrada;
 import com.smartticket.model.EstadoEntrada;
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface EntradaRepository extends JpaRepository<Entrada, Long> {
+    /** Un QR se escanea bajo bloqueo exclusivo para impedir ingreso duplicado concurrente. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from Entrada e where e.codigoQR = :codigoQR")
+    Optional<Entrada> bloquearPorCodigoQR(@Param("codigoQR") String codigoQR);
+
     /** Se seleccionan IDs estables, con limite, luego de obtener el bloqueo por sector. */
     List<Entrada> findByEvento_IdAndSector_IdAndEstadoOrderByIdAsc(
         Long eventoId, Long sectorId, EstadoEntrada estado, Pageable pagina);

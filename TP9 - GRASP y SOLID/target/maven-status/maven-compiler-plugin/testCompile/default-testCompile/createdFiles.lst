@@ -1,3 +1,5 @@
+com\smartticket\AccesoTests$Escenario.class
+com\smartticket\AccesoTests.class
 com\smartticket\SmartTicketApplicationTests.class
 com\smartticket\PagosTests.class
 com\smartticket\InfraestructuraTests.class
@@ -5,3 +7,4 @@ com\smartticket\DominioCrudTests.class
 com\smartticket\CotizacionTests.class
 com\smartticket\ConcurrenciaPagoTests.class
 com\smartticket\PreciosYEntradasTests.class
+com\smartticket\ConcurrenciaAccesoTests.class
