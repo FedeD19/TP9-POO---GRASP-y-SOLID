@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Navbar from './components/Navbar.jsx';
-import StagePanel from './components/StagePanel.jsx';
 import CotizacionPanel from './components/CotizacionPanel.jsx';
 import PagoPanel from './components/PagoPanel.jsx';
 import AccesoPanel from './components/AccesoPanel.jsx';
+import ExploradorPanel from './components/ExploradorPanel.jsx';
 import { seleccionarCotizacion } from './utils/pago.js';
 import ConnectionCard from './components/ConnectionCard.jsx';
 import { api } from './services/api.js';
@@ -65,9 +65,9 @@ export default function App() {
           <div>
             <div className="eyebrow">TP 9 · PROGRAMACIÓN ORIENTADA A OBJETOS</div>
             <h1>SmartTicket.<br /><span>Del backend a la experiencia real.</span></h1>
-            <p>Cotizá, pagá y validá el ingreso con nuestro backend Spring Boot. El explorador se integrará en la próxima etapa.</p>
+            <p>Cotizá, pagá y validá el ingreso con nuestro backend Spring Boot. Explorá datos reales del sistema desde la nueva pestaña Explorador.</p>
           </div>
-          <div className="version"><span>FRONTEND</span><strong>Etapa 4.4</strong><small>HU 1, HU 2 y HU 3 conectadas</small></div>
+          <div className="version"><span>FRONTEND</span><strong>Etapa 4.5</strong><small>HU 1, HU 2, HU 3 y Explorador</small></div>
         </div>
         {activa === 'cotizacion' ? <CotizacionPanel onContinuarPago={continuarAlPago} />
           : activa === 'pago' ? <PagoPanel seleccion={seleccionPago} comprobante={comprobante}
@@ -75,12 +75,12 @@ export default function App() {
             onVolverCotizacion={() => { if (!navegacionBloqueada) setActiva('cotizacion'); }} />
           : activa === 'acceso' ? <AccesoPanel comprobante={comprobante} codigoSugerido={codigoSugerido}
               onProcesando={setAccesoProcesando} />
-          : <StagePanel seccion={activa} />}
+          : <ExploradorPanel />}
         <ConnectionCard conexion={conexion} servicio={servicio} detalle={detalle} onReintentar={() => verificarConexion()} />
         <div className="tarjetas-ayuda">
           <div className="ayuda-item"><span aria-hidden="true">🔌</span><div><strong>API REST real</strong><p>Cotización, pago y acceso se comunican con Spring Boot.</p></div></div>
           <div className="ayuda-item"><span aria-hidden="true">🧮</span><div><strong>Reglas en Java</strong><p>El backend valida stock, pago, emisión y un único ingreso por QR.</p></div></div>
-          <div className="ayuda-item"><span aria-hidden="true">🔎</span><div><strong>Próxima etapa</strong><p>Integraremos el explorador de datos del sistema.</p></div></div>
+          <div className="ayuda-item"><span aria-hidden="true">🔎</span><div><strong>Explorador integrado</strong><p>Consultá inventario, entradas y ventas desde React con paginación.</p></div></div>
         </div>
       </main>
       <footer className="footer"><span>SmartTicket · GRASP / SOLID</span><span>React 18 · Vite 5 · Spring Boot</span></footer>

@@ -109,7 +109,7 @@ export default function PagoPanel({ seleccion, comprobante, onVolverCotizacion, 
             ? 'La venta fue registrada por SmartTicket y cada entrada tiene su identificador QR único.'
             : 'La pasarela es ficticia: solo admite APROBADA y RECHAZADA. No ingreses números de tarjetas reales.'}</p>
         </div>
-        <div className="paso-estado"><span className="paso-bola">02</span><span>PAGO<br/><strong>Etapa 4.4</strong></span></div>
+        <div className="paso-estado"><span className="paso-bola">02</span><span>PAGO<br/><strong>Etapa 4.5</strong></span></div>
       </div>
 
       <div className="pago-columnas">

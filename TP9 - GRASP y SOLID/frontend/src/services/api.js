@@ -53,6 +53,12 @@ async function request(path, { body, headers = {}, ...options } = {}) {
 export const api = {
   estado: (signal) => request('/estado', { signal }),
   eventos: (signal) => request('/eventos', { signal }),
+  lugares: (signal) => request('/lugares', { signal }),
+  sectores: (signal) => request('/sectores', { signal }),
+  ventasExplorador: (pagina = 0, tamano = 10, signal) =>
+    request(`/explorador/ventas?pagina=${pagina}&tamano=${tamano}`, { signal }),
+  entradasExplorador: (pagina = 0, tamano = 10, eventoId = '', signal) =>
+    request(`/explorador/entradas?pagina=${pagina}&tamano=${tamano}${eventoId ? `&eventoId=${encodeURIComponent(eventoId)}` : ''}`, { signal }),
   inventarioEvento: (eventoId, signal) =>
     request(`/eventos/${encodeURIComponent(eventoId)}/inventario`, { signal }),
   clientes: (signal) => request('/clientes', { signal }),

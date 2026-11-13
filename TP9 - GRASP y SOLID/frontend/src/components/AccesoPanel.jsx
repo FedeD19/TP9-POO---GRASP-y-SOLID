@@ -66,7 +66,7 @@ export default function AccesoPanel({ comprobante, codigoSugerido, onProcesando 
           <p>Ingresá el identificador QR de una entrada emitida. El backend verifica el pago,
             el estado y que el evento se celebre hoy antes de registrar el ingreso.</p>
         </div>
-        <div className="paso-estado"><span className="paso-bola">03</span><span>ACCESO<br /><strong>Etapa 4.4</strong></span></div>
+        <div className="paso-estado"><span className="paso-bola">03</span><span>ACCESO<br /><strong>Etapa 4.5</strong></span></div>
       </div>
       <div className="acceso-columnas">
         <div className="acceso-principal">

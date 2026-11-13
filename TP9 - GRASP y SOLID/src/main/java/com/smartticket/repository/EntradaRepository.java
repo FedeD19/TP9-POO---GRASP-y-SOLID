@@ -5,11 +5,16 @@ import com.smartticket.model.EstadoEntrada;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import java.util.List;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface EntradaRepository extends JpaRepository<Entrada, Long> {
+    /** Explorador: paginacion por evento; no se carga un inventario completo en memoria. */
+    Page<Entrada> findByEvento_Id(Long eventoId, Pageable pagina);
+    long countByVenta_Id(Long ventaId);
+
     /** Un QR se escanea bajo bloqueo exclusivo para impedir ingreso duplicado concurrente. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Entrada e where e.codigoQR = :codigoQR")
