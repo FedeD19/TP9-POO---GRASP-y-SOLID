@@ -55,6 +55,13 @@ export const api = {
   eventos: (signal) => request('/eventos', { signal }),
   inventarioEvento: (eventoId, signal) =>
     request(`/eventos/${encodeURIComponent(eventoId)}/inventario`, { signal }),
+  clientes: (signal) => request('/clientes', { signal }),
+  iniciarPago: ({ clienteId, eventoId, sectorId, cantidad, tarjetaPrueba }, signal) =>
+    request('/pagos/iniciar-pago', {
+      method: 'POST',
+      body: { clienteId, eventoId, sectorId, cantidad, tarjetaPrueba },
+      signal,
+    }),
   cotizar: ({ eventoId, sectorId, cantidad }, signal) => request('/cotizaciones/cotizar', {
     method: 'POST',
     body: { eventoId, sectorId, cantidad },

@@ -7,7 +7,7 @@ export const SECCIONES = [
   { id: 'explorador', nombre: 'Explorador', hu: 'Datos', icono: '📊' },
 ];
 
-export default function Navbar({ activa, onChange, conexion }) {
+export default function Navbar({ activa, onChange, conexion, bloqueado = false }) {
   return (
     <header className="cabecera">
       <div className="cabecera-interior">
@@ -25,6 +25,7 @@ export default function Navbar({ activa, onChange, conexion }) {
               type="button"
               className={`nav-boton ${activa === s.id ? 'activo' : ''}`}
               aria-current={activa === s.id ? 'page' : undefined}
+              disabled={bloqueado}
               onClick={() => onChange(s.id)}
             >
               <span aria-hidden="true">{s.icono}</span>

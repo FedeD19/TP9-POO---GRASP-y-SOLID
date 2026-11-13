@@ -8,13 +8,6 @@ const DETALLES = {
     pasos: ['Seleccionar un evento', 'Elegir sector y cantidad', 'Verificar disponibilidad y cotizar'],
     endpoint: 'POST /api/v1/cotizaciones/cotizar',
   },
-  pago: {
-    indice: '02', etiqueta: 'HU 2 · Pago y emisión',
-    titulo: 'Del carrito a tus entradas.',
-    descripcion: 'Aquí conectaremos el pago simulado y mostraremos los códigos de las entradas emitidas después de una compra aprobada.',
-    pasos: ['Confirmar cliente y selección', 'Simular pago aprobado o rechazado', 'Mostrar entradas emitidas'],
-    endpoint: 'POST /api/v1/pagos/iniciar-pago',
-  },
   acceso: {
     indice: '03', etiqueta: 'HU 3 · Control de acceso',
     titulo: 'Cada entrada, un único ingreso.',

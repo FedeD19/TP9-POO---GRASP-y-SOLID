@@ -26,3 +26,5 @@
 .control-con-accion select:focus-visible,.cantidad-wrap input:focus-visible,.sector-tarjeta:focus-within{outline:2px solid #5ccaff;outline-offset:2px}
 @media(max-width:950px){.cotizacion-columnas{grid-template-columns:1fr}.panel-resumen{border-left:0;border-top:1px solid #2a3c50}.cotizacion-encabezado{padding:32px}.panel-formulario,.panel-resumen{padding:30px 32px}}
 @media(max-width:530px){.cotizacion-encabezado{padding:26px 20px;flex-direction:column}.panel-formulario,.panel-resumen{padding:25px 20px}.paso-estado{align-self:flex-start}.sector-tarjeta{gap:9px;padding:12px}.sector-precio{font-size:12px}.form-titulo h3{font-size:17px}}
+
+.continuar-pago{margin-top:18px;background:linear-gradient(105deg,#168d77,#236fba)}

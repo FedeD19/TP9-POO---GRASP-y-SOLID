@@ -3,7 +3,7 @@ import { api } from '../services/api.js';
 import { cantidadValida, dinero, fechaEvento } from '../utils/formato.js';
 import './CotizacionPanel.css';
 
-export default function CotizacionPanel() {
+export default function CotizacionPanel({ onContinuarPago }) {
   const [eventos, setEventos] = useState([]);
   const [eventoId, setEventoId] = useState('');
   const [inventario, setInventario] = useState(null);
@@ -128,7 +128,7 @@ export default function CotizacionPanel() {
           <h2 id="hu1-titulo">Elegí tu evento.<br/><span>Conocé tu precio.</span></h2>
           <p>Seleccioná un evento y un sector; SmartTicket consultará las entradas disponibles y calculará la cotización en Spring Boot.</p>
         </div>
-        <div className="paso-estado"><span className="paso-bola">01</span><span>COTIZACIÓN<br/><strong>Etapa 4.2</strong></span></div>
+        <div className="paso-estado"><span className="paso-bola">01</span><span>COTIZACIÓN<br/><strong>Etapa 4.3</strong></span></div>
       </div>
 
       <div className="cotizacion-columnas">
@@ -212,11 +212,14 @@ export default function CotizacionPanel() {
               <div className="resumen-linea"><span>Subtotal</span><strong>{dinero(cotizacion.subtotal)}</strong></div>
               <div className="resumen-linea"><span>Disponibles al cotizar</span><strong>{cotizacion.entradasDisponibles}</strong></div>
               <div className="resultado-final"><span>TOTAL</span><strong>{dinero(cotizacion.total)}</strong></div>
+              <button className="boton-cotizar continuar-pago" type="button" onClick={() => onContinuarPago(cotizacion)}>
+                Continuar a pago simulado <span aria-hidden="true">→</span>
+              </button>
             </div>
           ) : (
             <div className="esperando-cotizacion"><span aria-hidden="true">◎</span><p>Cuando presiones <strong>Calcular cotización</strong>, la respuesta real de Spring Boot aparecerá aquí.</p></div>
           )}
-          <div className="siguiente-etapa"><span>PRÓXIMA INTEGRACIÓN</span><strong>Pago y emisión · HU 2</strong><small>En la Etapa 4.3 conectaremos la compra y los códigos QR.</small></div>
+          <div className="siguiente-etapa"><span>SIGUIENTE PASO</span><strong>Pago y emisión · HU 2</strong><small>Después de cotizar, continuá al pago ficticio. El stock se comprobará de nuevo.</small></div>
         </aside>
       </div>
     </section>
